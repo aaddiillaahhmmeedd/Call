@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netlist-agent"
+version = "0.1.0"
+description = "Netlist extraction agent for PCB repositories on GitHub"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31"]
+
+[project.scripts]
+netlist-agent = "netlist_agent.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
