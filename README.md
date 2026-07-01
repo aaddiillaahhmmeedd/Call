@@ -1,18 +1,24 @@
 # Call
 
-## PCB agents: netlisting + ratsnesting
+## PCB agents: netlisting, ratsnesting, ERC, autorouting
 
-This repository contains two cooperating PCB bots under one CLI:
+This repository contains four cooperating PCB bots under one CLI:
 
 1. **Netlist agent** — searches GitHub for PCB/PCBA projects, clones each
    candidate shallowly, and extracts components + nets from:
    - KiCad XML netlists (`.net`, `.xml`)
    - BOM CSV files (`bom.csv`, `ibom.csv`, `components.csv`)
 2. **Ratsnest agent** — parses a local KiCad board (`.kicad_pcb`), clusters
-   copper (pads, tracks, vias) per net with union-find, and emits the
-   minimum-spanning-tree airwires between unconnected clusters — the same
-   shape a PCB editor draws as its ratsnest. Reports routing completion and
-   renders an SVG.
+   copper (pads, tracks, vias, filled zones) per net with union-find, and
+   emits the minimum-spanning-tree airwires between unconnected clusters —
+   the same shape a PCB editor draws as its ratsnest. Reports routing
+   completion and renders an SVG.
+3. **ERC bot** — diffs a schematic netlist against the board's pad
+   connectivity: missing/extra components and net-membership mismatches.
+   `--strict` makes it CI-friendly (exit code 2 on issues).
+4. **Autoroute agent** — v1 single-layer grid autorouter: A* over the board
+   bounding box with clearance-inflated obstacles, converts airwires into
+   track segments and can write a routed `.kicad_pcb` copy.
 
 ## Quick start
 

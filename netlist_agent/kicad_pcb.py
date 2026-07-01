@@ -48,11 +48,19 @@ class Via:
 
 
 @dataclass(slots=True)
+class Zone:
+    net_code: int
+    layer: str
+    polygons: list[list[tuple[float, float]]]
+
+
+@dataclass(slots=True)
 class Board:
     nets: dict[int, str] = field(default_factory=dict)
     pads: list[Pad] = field(default_factory=list)
     segments: list[TrackSegment] = field(default_factory=list)
     vias: list[Via] = field(default_factory=list)
+    zones: list[Zone] = field(default_factory=list)
 
 
 def tokenize(text: str) -> list[str]:
@@ -167,6 +175,32 @@ def _parse_pad(pad: SExpr, fp_x: float, fp_y: float, fp_rot: float, reference: s
     )
 
 
+def _polygon_points(expr: SExpr) -> list[tuple[float, float]]:
+    pts = _child(expr, "pts")
+    if pts is None:
+        return []
+    points: list[tuple[float, float]] = []
+    for xy in _children(pts, "xy"):
+        x, y = _floats(xy, 2)
+        points.append((x, y))
+    return points
+
+
+def _parse_zone(zone: SExpr) -> Zone:
+    net_expr = _child(zone, "net")
+    layer_expr = _child(zone, "layer") or _child(zone, "layers")
+    polygons = [pts for fp in _children(zone, "filled_polygon") if (pts := _polygon_points(fp))]
+    if not polygons:
+        outline = _child(zone, "polygon")
+        if outline is not None and (pts := _polygon_points(outline)):
+            polygons.append(pts)
+    return Zone(
+        net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0,
+        layer=str(layer_expr[1]) if layer_expr and len(layer_expr) > 1 else "",
+        polygons=polygons,
+    )
+
+
 def parse_board(path: Path | str) -> Board:
     text = Path(path).read_text(encoding="utf-8", errors="ignore")
     root = parse_sexpr(text)
@@ -213,5 +247,8 @@ def parse_board(path: Path | str) -> Board:
         board.vias.append(
             Via(x=vx, y=vy, net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0)
         )
+
+    for zone in _children(root, "zone"):
+        board.zones.append(_parse_zone(zone))
 
     return board

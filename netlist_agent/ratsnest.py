@@ -2,9 +2,10 @@
 
 Algorithm, per net:
 
-1. Collect connection items: pads, track-segment endpoints, and vias.
-2. Cluster them with union-find — a segment joins its two endpoints, and a
-   pad absorbs any endpoint/via that lands within its hit radius.
+1. Collect connection items: pads, track-segment endpoints, vias, and zones.
+2. Cluster them with union-find — a segment joins its two endpoints, a
+   pad absorbs any endpoint/via that lands within its hit radius, and a
+   zone absorbs any item point inside one of its filled polygons.
 3. Every pair of clusters still separated needs copper: emit the minimum
    spanning tree over clusters (Prim's), using the closest item pair between
    two clusters as the edge — the same shape KiCad draws as its ratsnest.
@@ -97,6 +98,31 @@ class RatsnestReport:
         }
 
 
+_BOUNDARY_EPS = 1e-6
+
+
+def _on_segment(x: float, y: float, x1: float, y1: float, x2: float, y2: float) -> bool:
+    dx, dy = x2 - x1, y2 - y1
+    length_sq = dx * dx + dy * dy
+    if length_sq == 0:
+        return math.hypot(x - x1, y - y1) <= _BOUNDARY_EPS
+    t = max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / length_sq))
+    return math.hypot(x - (x1 + t * dx), y - (y1 + t * dy)) <= _BOUNDARY_EPS
+
+
+def _point_in_polygon(x: float, y: float, polygon: list[tuple[float, float]]) -> bool:
+    """Even-odd ray casting; points within _BOUNDARY_EPS of an edge count as inside."""
+    inside = False
+    for i in range(len(polygon)):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % len(polygon)]
+        if _on_segment(x, y, x1, y1, x2, y2):
+            return True
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
 class _UnionFind:
     def __init__(self, size: int) -> None:
         self.parent = list(range(size))
@@ -128,6 +154,7 @@ def _compute_net(board: Board, net_code: int, net_name: str) -> NetReport | None
     pads = [p for p in board.pads if p.net_code == net_code]
     segments = [s for s in board.segments if s.net_code == net_code]
     vias = [v for v in board.vias if v.net_code == net_code]
+    zones = [z for z in board.zones if z.net_code == net_code and z.polygons]
     if not pads and not segments:
         return None
 
@@ -146,6 +173,11 @@ def _compute_net(board: Board, net_code: int, net_name: str) -> NetReport | None
     for v in vias:
         junction(v.x, v.y)
 
+    # One item per zone, positioned at its first vertex (only used if it connects nothing).
+    zone_start = len(points)
+    for z in zones:
+        points.append(z.polygons[0][0])
+
     uf = _UnionFind(len(points))
     for a, b in segment_ends:
         uf.union(a, b)
@@ -153,6 +185,11 @@ def _compute_net(board: Board, net_code: int, net_name: str) -> NetReport | None
         for key, j in junction_index.items():
             if math.hypot(key[0] - pad.x, key[1] - pad.y) <= pad.radius + 1e-6:
                 uf.union(i, j)
+    for zi, z in enumerate(zones):
+        for i in range(zone_start):
+            x, y = points[i]
+            if any(_point_in_polygon(x, y, poly) for poly in z.polygons):
+                uf.union(zone_start + zi, i)
 
     clusters: dict[int, list[int]] = {}
     for i in range(len(points)):
