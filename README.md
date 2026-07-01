@@ -1,21 +1,29 @@
 # Call
 
-## Netlist Agent for PCBAs on GitHub
+## PCB agents: netlisting + ratsnesting
 
-This repository now includes a starter **netlist agent** that:
+This repository contains two cooperating PCB bots under one CLI:
 
-1. Searches GitHub repositories for PCB/PCBA projects.
-2. Clones each candidate repo shallowly (`--depth 1`).
-3. Extracts component + net information from common files:
-   - KiCad XML netlist (`.net`, `.xml`)
+1. **Netlist agent** — searches GitHub for PCB/PCBA projects, clones each
+   candidate shallowly, and extracts components + nets from:
+   - KiCad XML netlists (`.net`, `.xml`)
    - BOM CSV files (`bom.csv`, `ibom.csv`, `components.csv`)
-4. Produces normalized JSON output.
+2. **Ratsnest agent** — parses a local KiCad board (`.kicad_pcb`), clusters
+   copper (pads, tracks, vias) per net with union-find, and emits the
+   minimum-spanning-tree airwires between unconnected clusters — the same
+   shape a PCB editor draws as its ratsnest. Reports routing completion and
+   renders an SVG.
 
 ## Quick start
 
 ```bash
 python -m pip install -e .
-netlist-agent "kicad power supply" --limit 3 --output output/netlists.json
+
+# Netlisting: mine GitHub for PCB designs
+netlist-agent netlist "kicad power supply" --limit 3 --output output/netlists.json
+
+# Ratsnesting: analyze a local board
+netlist-agent ratsnest path/to/board.kicad_pcb --json output/ratsnest.json --svg output/ratsnest.svg
 ```
 
 Optional authentication for higher GitHub API limits:
@@ -24,7 +32,18 @@ Optional authentication for higher GitHub API limits:
 export GITHUB_TOKEN=ghp_xxx
 ```
 
-## Output schema
+## Ratsnest output
+
+The console prints routing completion; `--json` writes the full report:
+
+- `nets_total`, `nets_fully_routed`, `completion_pct`
+- `airwire_count`, `unrouted_length_mm`
+- per net: `pads`, `clusters`, `routed_length_mm`, `airwires[]` with endpoints
+
+`--svg` renders tracks (red = F.Cu, blue = B.Cu), pads, vias, and dashed cyan
+airwires with hover tooltips.
+
+## Netlist output schema
 
 Each record contains:
 
@@ -33,7 +52,10 @@ Each record contains:
 - `components[]`: reference/value/footprint/library/metadata
 - `nets[]`: net name and connected references
 
-## Notes
+## Notes and limits
 
-- This is a strong baseline for a fuller autonomous "netlisting" pipeline.
-- You can add more parsers for Altium, OrCAD, Eagle, etc., in `netlist_agent/pcb_extractors.py`.
+- Ratsnest connectivity is layer-agnostic (see `netlist_agent/ratsnest.py`
+  docstring) and does not yet model copper zones/pours — a poured GND plane
+  still shows airwires. Zones are the natural next parser addition.
+- More ECAD parsers (Altium, OrCAD, Eagle) can be added in
+  `netlist_agent/pcb_extractors.py`.
