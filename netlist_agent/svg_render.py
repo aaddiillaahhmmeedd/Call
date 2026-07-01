@@ -27,6 +27,11 @@ def render_svg(board: Board, report: RatsnestReport, output_file: Path, scale: f
     for v in board.vias:
         xs.append(v.x)
         ys.append(v.y)
+    for z in board.zones:
+        for polygon in z.polygons:
+            for x, y in polygon:
+                xs.append(x)
+                ys.append(y)
     if not xs:
         xs, ys = [0.0], [0.0]
 
@@ -46,6 +51,12 @@ def render_svg(board: Board, report: RatsnestReport, output_file: Path, scale: f
         f'viewBox="0 0 {width:.2f} {height:.2f}">',
         f'<rect width="100%" height="100%" fill="{_BACKGROUND}"/>',
     ]
+
+    for z in board.zones:
+        color = _LAYER_COLORS.get(z.layer, _DEFAULT_TRACK_COLOR)
+        for polygon in z.polygons:
+            pts = " ".join(f"{sx(x)},{sy(y)}" for x, y in polygon)
+            parts.append(f'<polygon points="{pts}" fill="{color}" fill-opacity="0.25"/>')
 
     for s in board.segments:
         color = _LAYER_COLORS.get(s.layer, _DEFAULT_TRACK_COLOR)

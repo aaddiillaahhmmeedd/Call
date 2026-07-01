@@ -39,6 +39,27 @@ def build_parser() -> argparse.ArgumentParser:
     ratsnest.add_argument("--json", type=Path, default=None, help="Write full report as JSON")
     ratsnest.add_argument("--svg", type=Path, default=None, help="Render board + airwires as SVG")
 
+    erc = sub.add_parser(
+        "erc",
+        help="Diff a schematic netlist against a board's pad connectivity.",
+    )
+    erc.add_argument("netlist", type=Path, help="Schematic netlist (.net/.xml KiCad export)")
+    erc.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
+    erc.add_argument("--json", type=Path, default=None, help="Write issues as JSON")
+    erc.add_argument("--strict", action="store_true", help="Exit with status 2 if issues found")
+
+    route = sub.add_parser(
+        "route",
+        help="Autoroute the board's airwires on a grid (single layer, v1).",
+    )
+    route.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
+    route.add_argument("--grid", type=float, default=0.25, help="Routing grid in mm")
+    route.add_argument("--clearance", type=float, default=0.2, help="Copper clearance in mm")
+    route.add_argument("--layer", default="F.Cu", help="Layer for new tracks")
+    route.add_argument("--width", type=float, default=0.25, help="Track width in mm")
+    route.add_argument("--output", type=Path, default=None, help="Write routed .kicad_pcb copy")
+    route.add_argument("--svg", type=Path, default=None, help="Render routed board as SVG")
+
     return parser
 
 
@@ -72,12 +93,71 @@ def _run_ratsnest(args: argparse.Namespace) -> None:
         print(f"Ratsnest SVG -> {args.svg}")
 
 
+def _run_erc(args: argparse.Namespace) -> None:
+    from .erc import compare
+    from .pcb_extractors import extract_from_file
+
+    schematic = extract_from_file("local", args.netlist)
+    if schematic is None:
+        raise SystemExit(f"{args.netlist}: could not parse a netlist from this file")
+    board = parse_board(args.board)
+    issues = compare(schematic, board)
+
+    if not issues:
+        print(f"{args.board.name}: ERC clean — board matches {args.netlist.name}")
+    for issue in issues:
+        print(f"  [{issue.kind}] {issue.message}")
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(
+            json.dumps([i.to_dict() for i in issues], indent=2), encoding="utf-8"
+        )
+        print(f"Issues -> {args.json}")
+    if issues and args.strict:
+        raise SystemExit(2)
+
+
+def _run_route(args: argparse.Namespace) -> None:
+    from .autoroute import route_board, write_routed_board
+
+    board = parse_board(args.board)
+    report = compute_ratsnest(board)
+    result = route_board(
+        board,
+        report,
+        grid=args.grid,
+        clearance=args.clearance,
+        layer=args.layer,
+        width=args.width,
+    )
+    total_len = sum(s.length for s in result.segments)
+    print(
+        f"{args.board.name}: routed {len(result.routed)}/{len(result.routed) + len(result.failed)} "
+        f"airwires, {len(result.segments)} new segments, {total_len:.2f} mm of track"
+    )
+    for airwire in result.failed:
+        print(f"  [failed] {airwire.net_name}: {airwire.length:.2f} mm airwire")
+
+    if args.output:
+        write_routed_board(args.board, result, args.output)
+        print(f"Routed board -> {args.output}")
+    if args.svg:
+        board.segments.extend(result.segments)
+        render_svg(board, compute_ratsnest(board), args.svg)
+        print(f"Routed SVG -> {args.svg}")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "netlist":
         _run_netlist(args)
     elif args.command == "ratsnest":
         _run_ratsnest(args)
+    elif args.command == "erc":
+        _run_erc(args)
+    elif args.command == "route":
+        _run_route(args)
 
 
 if __name__ == "__main__":
