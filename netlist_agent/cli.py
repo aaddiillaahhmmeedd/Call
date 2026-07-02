@@ -62,6 +62,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Route on F.Cu + B.Cu with via insertion",
     )
     route.add_argument("--width", type=float, default=0.25, help="Track width in mm")
+    route.add_argument(
+        "--rip-up", type=int, default=2, help="Rip-up-and-reroute retries per failed airwire"
+    )
     route.add_argument("--output", type=Path, default=None, help="Write routed .kicad_pcb copy")
     route.add_argument("--svg", type=Path, default=None, help="Render routed board as SVG")
 
@@ -86,6 +89,25 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument(
         "-o", "--output", type=Path, default=Path("output/report.html"), help="Output HTML file"
     )
+
+    summary = sub.add_parser(
+        "summary",
+        help="Print a markdown summary (for PR comments) of ratsnest/ERC/DRC results.",
+    )
+    summary.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    summary.add_argument("--netlist", type=Path, default=None, help="Schematic netlist for ERC")
+    summary.add_argument("--clearance", type=float, default=0.15, help="DRC clearance in mm")
+
+    place = sub.add_parser(
+        "place",
+        help="Optimize component placement to minimize total ratsnest length.",
+    )
+    place.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
+    place.add_argument("--iterations", type=int, default=5000, help="Annealing iterations")
+    place.add_argument("--seed", type=int, default=0, help="Random seed")
+    place.add_argument("--spacing", type=float, default=0.5, help="Minimum component spacing in mm")
+    place.add_argument("--output", type=Path, default=None, help="Write re-placed .kicad_pcb copy")
+    place.add_argument("--svg", type=Path, default=None, help="Render re-placed board as SVG")
 
     return parser
 
@@ -155,9 +177,15 @@ def _run_erc(args: argparse.Namespace) -> None:
 
 def _run_route(args: argparse.Namespace) -> None:
     from .autoroute import route_board, write_routed_board
+    from .kicad_pcb import width_for_net
 
     board = _load_board(args.board)
     report = compute_ratsnest(board)
+    net_widths = None
+    if getattr(board, "net_classes", None):
+        net_widths = {
+            code: width_for_net(board, code, default=args.width) for code in board.nets if code
+        }
     result = route_board(
         board,
         report,
@@ -166,6 +194,8 @@ def _run_route(args: argparse.Namespace) -> None:
         layer=args.layer,
         width=args.width,
         layers=("F.Cu", "B.Cu") if args.two_layer else None,
+        net_widths=net_widths,
+        rip_up_retries=args.rip_up,
     )
     total_len = sum(s.length for s in result.segments)
     print(
@@ -241,6 +271,52 @@ def _run_report(args: argparse.Namespace) -> None:
     print(f"Report -> {args.output}")
 
 
+def _run_summary(args: argparse.Namespace) -> None:
+    from .drc import check_board
+    from .summary import markdown_summary
+
+    board = _load_board(args.board)
+    ratsnest = compute_ratsnest(board)
+    violations = [v.to_dict() for v in check_board(board, clearance=args.clearance)]
+
+    erc_issues = None
+    if args.netlist:
+        from .erc import compare
+        from .pcb_extractors import extract_from_file
+
+        schematic = extract_from_file("local", args.netlist)
+        if schematic is None:
+            raise SystemExit(f"{args.netlist}: could not parse a netlist from this file")
+        erc_issues = [i.to_dict() for i in compare(schematic, board)]
+
+    print(markdown_summary(args.board.name, ratsnest.to_dict(), erc_issues, violations))
+
+
+def _run_place(args: argparse.Namespace) -> None:
+    from .placement import optimize_placement, write_placed_board
+
+    board = _load_board(args.board)
+    result = optimize_placement(
+        board, iterations=args.iterations, seed=args.seed, spacing=args.spacing
+    )
+    summary = result.to_dict()
+    print(
+        f"{args.board.name}: ratsnest length {result.initial_length:.2f} -> "
+        f"{result.final_length:.2f} mm ({summary.get('improvement_pct', 0)}% better) "
+        f"in {result.iterations} iterations"
+    )
+
+    if args.output:
+        write_placed_board(args.board, result, args.output)
+        print(f"Placed board -> {args.output}")
+        if args.svg:
+            placed = _load_board(args.output)
+            render_svg(placed, compute_ratsnest(placed), args.svg)
+            print(f"Placed SVG -> {args.svg}")
+    elif args.svg:
+        raise SystemExit("--svg requires --output (the SVG renders the re-placed board file)")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "netlist":
@@ -255,6 +331,10 @@ def main() -> None:
         _run_drc(args)
     elif args.command == "report":
         _run_report(args)
+    elif args.command == "summary":
+        _run_summary(args)
+    elif args.command == "place":
+        _run_place(args)
 
 
 if __name__ == "__main__":
