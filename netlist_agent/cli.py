@@ -123,6 +123,12 @@ def build_parser() -> argparse.ArgumentParser:
     pour.add_argument("--layer", default="B.Cu", help="Copper layer for the pour")
     pour.add_argument("--clearance", type=float, default=0.3, help="Clearance to foreign copper in mm")
     pour.add_argument("--grid", type=float, default=0.25, help="Fill grid in mm")
+    pour.add_argument(
+        "--thermal", action="store_true", help="Connect same-net pads with thermal-relief spokes"
+    )
+    pour.add_argument(
+        "--smooth", action="store_true", help="Trace smoothed region outlines instead of rectangles"
+    )
     pour.add_argument("--output", type=Path, default=None, help="Write poured .kicad_pcb copy")
     pour.add_argument("--svg", type=Path, default=None, help="Render poured board as SVG")
 
@@ -144,6 +150,26 @@ def build_parser() -> argparse.ArgumentParser:
     batch.add_argument("--clearance", type=float, default=0.15, help="DRC clearance in mm")
     batch.add_argument("--json", type=Path, default=None, help="Write full results as JSON")
     batch.add_argument("--markdown", type=Path, default=None, help="Write index as markdown")
+
+    gerber = sub.add_parser(
+        "gerber",
+        help="Export copper layers as Gerber RS-274X plus an Excellon drill file.",
+    )
+    gerber.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    gerber.add_argument(
+        "-o", "--output", type=Path, default=Path("output/gerbers"), help="Output directory"
+    )
+    gerber.add_argument(
+        "--layers", default="F.Cu,B.Cu", help="Comma-separated copper layers to export"
+    )
+
+    export = sub.add_parser(
+        "export",
+        help="Export a KiCad XML netlist or grouped BOM CSV from a board.",
+    )
+    export.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    export.add_argument("--netlist", type=Path, default=None, help="Write XML netlist here")
+    export.add_argument("--bom", type=Path, default=None, help="Write BOM CSV here")
 
     return parser
 
