@@ -1,8 +1,8 @@
 # Call
 
-## PCB agents: netlisting, ratsnesting, ERC, DRC, autorouting, reporting
+## PCB agents: netlisting, ratsnesting, ERC, DRC, autorouting, placement, reporting
 
-This repository contains six cooperating PCB bots under one CLI. Boards can
+This repository contains eight cooperating PCB bots under one CLI. Boards can
 be KiCad (`.kicad_pcb`) or Eagle 6+ XML (`.brd`) — both parse into the same
 board model.
 
@@ -21,9 +21,20 @@ board model.
    minimum track-width checks. Also `--strict`-gated for CI.
 5. **Autoroute agent** — grid autorouter: A* over the board bounding box
    with clearance-inflated obstacles; `--two-layer` routes F.Cu + B.Cu with
-   via insertion. Writes a routed board copy.
-6. **Report bot** — one-shot standalone HTML report combining ratsnest,
+   via insertion, `--rip-up` enables rip-up-and-reroute for congested
+   boards, and net-class `trace_width` rules set per-net track widths.
+   Writes a routed board copy.
+6. **Placement bot** — simulated-annealing component placement that
+   minimizes total ratsnest length with an overlap penalty; writes a
+   re-placed board copy.
+7. **Report bot** — one-shot standalone HTML report combining ratsnest,
    DRC, optional ERC, and the board SVG.
+8. **PR comment bot** — `netlist-agent summary` prints a markdown summary,
+   and the `pcb-report.yml` workflow posts it as a sticky comment on pull
+   requests that touch board files.
+
+DRC and routing honor KiCad legacy `(net_class ...)` blocks: per-net
+clearance (the larger of the two nets' classes wins) and trace widths.
 
 ## Quick start
 
@@ -42,11 +53,17 @@ netlist-agent erc path/to/schematic.net path/to/board.kicad_pcb --strict
 # DRC: clearance + track width rules
 netlist-agent drc path/to/board.kicad_pcb --clearance 0.15 --strict
 
-# Autoroute the remaining airwires (two-layer with vias)
-netlist-agent route path/to/board.kicad_pcb --two-layer --output output/routed.kicad_pcb
+# Autoroute the remaining airwires (two-layer with vias, rip-up on congestion)
+netlist-agent route path/to/board.kicad_pcb --two-layer --rip-up 2 --output output/routed.kicad_pcb
+
+# Optimize component placement before routing
+netlist-agent place path/to/board.kicad_pcb --output output/placed.kicad_pcb --svg output/placed.svg
 
 # Everything at once as a standalone HTML report
 netlist-agent report path/to/board.kicad_pcb --netlist path/to/schematic.net -o output/report.html
+
+# Markdown summary for PR comments (used by .github/workflows/pcb-report.yml)
+netlist-agent summary path/to/board.kicad_pcb --netlist path/to/schematic.net
 ```
 
 Optional authentication for higher GitHub API limits:
