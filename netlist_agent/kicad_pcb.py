@@ -63,6 +63,16 @@ class NetClass:
 
 
 @dataclass(slots=True)
+class Footprint:
+    reference: str
+    name: str
+    value: str | None = None
+    x: float = 0.0
+    y: float = 0.0
+    rotation: float = 0.0
+
+
+@dataclass(slots=True)
 class Board:
     nets: dict[int, str] = field(default_factory=dict)
     pads: list[Pad] = field(default_factory=list)
@@ -71,6 +81,7 @@ class Board:
     zones: list[Zone] = field(default_factory=list)
     net_classes: dict[str, NetClass] = field(default_factory=dict)
     edge_segments: list[TrackSegment] = field(default_factory=list)  # board outline on Edge.Cuts
+    footprints: list[Footprint] = field(default_factory=list)
 
 
 def tokenize(text: str) -> list[str]:
@@ -162,6 +173,16 @@ def _footprint_reference(fp: SExpr) -> str:
         if len(text) >= 3 and text[1] == "reference":
             return str(text[2])
     return "?"
+
+
+def _footprint_value(fp: SExpr) -> str | None:
+    for prop in _children(fp, "property"):
+        if len(prop) >= 3 and prop[1] == "Value":
+            return str(prop[2])
+    for text in _children(fp, "fp_text"):
+        if len(text) >= 3 and text[1] == "value":
+            return str(text[2])
+    return None
 
 
 def _parse_pad(pad: SExpr, fp_x: float, fp_y: float, fp_rot: float, reference: str, nets: dict[int, str]) -> Pad | None:
@@ -306,6 +327,17 @@ def parse_board(path: Path | str) -> Board:
         for fp in _children(root, tag):
             fp_x, fp_y, fp_rot = _floats(_child(fp, "at"), 3)
             reference = _footprint_reference(fp)
+            name = next((item for item in fp[1:] if isinstance(item, str)), "?")
+            board.footprints.append(
+                Footprint(
+                    reference=reference,
+                    name=name,
+                    value=_footprint_value(fp),
+                    x=fp_x,
+                    y=fp_y,
+                    rotation=fp_rot,
+                )
+            )
             for pad_expr in _children(fp, "pad"):
                 pad = _parse_pad(pad_expr, fp_x, fp_y, fp_rot, reference, board.nets)
                 if pad is not None:

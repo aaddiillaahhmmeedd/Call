@@ -388,7 +388,13 @@ def _run_pour(args: argparse.Namespace) -> None:
     if not matches:
         raise SystemExit(f"{args.board.name}: no net named {args.net!r}")
     zone = generate_pour(
-        board, matches[0], layer=args.layer, clearance=args.clearance, grid=args.grid
+        board,
+        matches[0],
+        layer=args.layer,
+        clearance=args.clearance,
+        grid=args.grid,
+        thermal=args.thermal,
+        smooth=args.smooth,
     )
     print(
         f"{args.board.name}: poured {args.net} on {args.layer} — "
@@ -459,6 +465,33 @@ def _run_batch(args: argparse.Namespace) -> None:
         print(f"Index -> {args.markdown}")
 
 
+def _run_gerber(args: argparse.Namespace) -> None:
+    from .gerber import export_gerbers
+
+    board = _load_board(args.board)
+    layers = tuple(layer.strip() for layer in args.layers.split(",") if layer.strip())
+    written = export_gerbers(board, args.output, layers=layers)
+    for path in written:
+        print(f"  {path}")
+    print(f"Exported {len(written)} fabrication files -> {args.output}")
+
+
+def _run_export(args: argparse.Namespace) -> None:
+    from .netlist_export import export_bom_csv, export_netlist_xml
+
+    if not args.netlist and not args.bom:
+        raise SystemExit("export: pass --netlist and/or --bom")
+    board = _load_board(args.board)
+    if args.netlist:
+        args.netlist.parent.mkdir(parents=True, exist_ok=True)
+        args.netlist.write_text(export_netlist_xml(board), encoding="utf-8")
+        print(f"Netlist XML -> {args.netlist}")
+    if args.bom:
+        args.bom.parent.mkdir(parents=True, exist_ok=True)
+        args.bom.write_text(export_bom_csv(board), encoding="utf-8")
+        print(f"BOM CSV -> {args.bom}")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "netlist":
@@ -483,6 +516,10 @@ def main() -> None:
         _run_lengths(args)
     elif args.command == "batch":
         _run_batch(args)
+    elif args.command == "gerber":
+        _run_gerber(args)
+    elif args.command == "export":
+        _run_export(args)
 
 
 if __name__ == "__main__":
