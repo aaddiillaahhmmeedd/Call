@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from netlist_agent.pipeline import analyze_tree, index_json, index_markdown
+from netlist_agent.pipeline import analyze_repo_dir, analyze_tree, index_json, index_markdown
 
 # Same shape as the tests/test_ratsnest.py fixture: two nets, N1 routed,
 # GND (3 pads, no copper) needing 2 airwires -> 50% completion.
@@ -47,6 +47,21 @@ ROUTED_BOARD = """
 
 VALID_PATHS = ["demo.kicad_pcb", "sub/nested.kicad_pcb"]
 ERROR_PATHS = ["broken.kicad_pcb", "fake.brd"]
+
+# Same style as tests/test_extractors.py: two components, one net.
+NETLIST_XML = """
+<export>
+  <components>
+    <comp ref="R1"><value>10k</value><footprint>R_0603</footprint></comp>
+    <comp ref="C1"><value>100n</value></comp>
+  </components>
+  <nets>
+    <net name="GND"><node ref="R1"/><node ref="C1"/></net>
+  </nets>
+</export>
+"""
+
+BOM_CSV = "Reference,Value,Footprint\nR1 R2,10k,R_0603\n"
 
 
 @pytest.fixture()
@@ -126,3 +141,68 @@ def test_index_markdown_table(tree: Path) -> None:
     assert len(error_rows) == len(ERROR_PATHS)
     assert any("not an Eagle board file" in row for row in error_rows)
     assert "✅" in markdown  # sub/nested.kicad_pcb is fully routed and clean
+
+
+@pytest.fixture()
+def repo_dir(tmp_path: Path) -> Path:
+    """A fake repo checkout: one XML netlist, one BOM csv, one board."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "board.net").write_text(NETLIST_XML.strip(), encoding="utf-8")
+    (repo / "bom.csv").write_text(BOM_CSV, encoding="utf-8")
+    hardware = repo / "hardware"
+    hardware.mkdir()
+    (hardware / "demo.kicad_pcb").write_text(ROUTED_BOARD.strip(), encoding="utf-8")
+    return repo
+
+
+def test_analyze_repo_dir_collects_netlists_and_boards(repo_dir: Path) -> None:
+    analysis = analyze_repo_dir("org/repo", repo_dir)
+    assert analysis.repo == "org/repo"
+
+    by_path = {netlist["path"]: netlist for netlist in analysis.netlists}
+    assert set(by_path) == {"board.net", "bom.csv"}
+    assert all(netlist["repo"] == "org/repo" for netlist in analysis.netlists)
+    assert len(by_path["board.net"]["components"]) == 2
+    assert by_path["board.net"]["nets"][0]["net_name"] == "GND"
+    assert len(by_path["bom.csv"]["components"]) == 2
+
+    assert [board.path for board in analysis.boards] == ["hardware/demo.kicad_pcb"]
+    board = analysis.boards[0]
+    assert board.error is None
+    assert board.ratsnest is not None
+    assert board.ratsnest["completion_pct"] == 100.0
+    assert board.drc == []
+
+
+def test_repo_analysis_to_dict_round_trips(repo_dir: Path) -> None:
+    payload = analyze_repo_dir("org/repo", repo_dir).to_dict()
+    assert payload.keys() == {"repo", "netlists", "boards"}
+    assert json.loads(json.dumps(payload)) == payload
+    assert {board["path"] for board in payload["boards"]} == {"hardware/demo.kicad_pcb"}
+
+
+def test_index_markdown_with_repo_results(repo_dir: Path) -> None:
+    analysis = analyze_repo_dir("org/repo", repo_dir)
+    markdown = index_markdown([], repo_results=[analysis])
+    lines = markdown.splitlines()
+
+    assert lines[0] == "## PCB analysis (1 repo)"
+    assert "### org/repo (2 netlists)" in lines
+    assert "| Board | Nets | Routed | Airwires | DRC | Status |" in lines
+    assert "| hardware/demo.kicad_pcb |" in markdown
+
+    # Rows are rendered exactly as a direct single-tree call renders them.
+    direct = index_markdown(analysis.boards)
+    direct_rows = [
+        line for line in direct.splitlines()
+        if line.startswith("| ") and not line.startswith(("| Board", "| ---"))
+    ]
+    assert direct_rows
+    for row in direct_rows:
+        assert row in lines
+
+
+def test_index_markdown_without_repo_results_unchanged(tree: Path) -> None:
+    results = analyze_tree(tree)
+    assert index_markdown(results) == index_markdown(results, repo_results=None)
