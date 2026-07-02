@@ -168,6 +168,47 @@ def test_interactive_net_highlighting() -> None:
     assert f"data-net=\"{escaped}\"" in svg
 
 
+def test_svg_elements_carry_data_layer() -> None:
+    from netlist_agent.kicad_pcb import Board, Pad, TrackSegment
+    from netlist_agent.ratsnest import compute_ratsnest
+    from netlist_agent.svg_render import render_svg
+
+    board = Board(
+        nets={0: "", 1: "N1"},
+        pads=[
+            Pad(reference="R1", pad_name="1", x=0.0, y=0.0, net_code=1, net_name="N1", radius=0.4),
+            Pad(reference="R2", pad_name="1", x=5.0, y=0.0, net_code=1, net_name="N1", radius=0.4),
+        ],
+        segments=[
+            TrackSegment(x1=0.0, y1=0.0, x2=5.0, y2=0.0, width=0.25, layer="F.Cu", net_code=1)
+        ],
+    )
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        svg_path = Path(tmp) / "board.svg"
+        render_svg(board, compute_ratsnest(board), svg_path)
+        svg = svg_path.read_text(encoding="utf-8")
+
+    assert 'data-layer="F.Cu"' in svg  # the track
+    assert 'data-layer="pad"' in svg
+
+
+def test_controls_present_exactly_once_with_svg() -> None:
+    out = render_report("t", _ratsnest(), [], [], svg=_SVG)
+
+    assert out.count('id="net-search"') == 1
+    assert out.count('id="layer-toggles"') == 1
+    assert out.count("<script>") == 1
+
+
+def test_no_svg_omits_controls() -> None:
+    out = render_report("t", _ratsnest(), [], [], svg=None)
+
+    assert 'id="net-search"' not in out
+    assert 'id="layer-toggles"' not in out
+
+
 def test_no_svg_means_no_script() -> None:
     report = render_report(
         title="board",
