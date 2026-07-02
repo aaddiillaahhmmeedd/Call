@@ -1,9 +1,12 @@
 """Standalone single-file HTML report for a PCB analysis run.
 
-Everything is inlined (CSS, board SVG) so the output can be attached to a
-PR/issue or opened from disk with no external assets and no JavaScript.
-All data values are escaped with html.escape; the ``svg`` argument is the
-one trusted input — it is markup this package rendered itself.
+Everything is inlined (CSS, board SVG, a small vanilla-JS block) so the
+output can be attached to a PR/issue or opened from disk with no external
+assets. With JavaScript enabled, clicking a net row highlights that net on
+the board SVG and the board panel supports wheel zoom + drag pan; without
+it the page reads as a plain static report. All data values are escaped
+with html.escape; the ``svg`` argument is the one trusted input — it is
+markup this package rendered itself.
 """
 
 from __future__ import annotations
@@ -63,6 +66,58 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.status-ok { color: #34c759; white-space: nowrap; }
 td.status-bad { color: #e05656; white-space: nowrap; }
 .empty { margin: 0; color: #8fa0b8; font-size: 13.5px; }
+tr.net-row { cursor: pointer; }
+tr.net-row:hover td { background: rgba(255, 255, 255, 0.04); }
+tr.net-row.selected td { background: rgba(64, 140, 255, 0.16); }
+.svg-panel { overflow: hidden; }
+.svg-panel svg { transform-origin: 0 0; }
+.svg-panel [data-net] { transition: opacity 0.15s; }
+""".strip()
+
+# Net highlighting (click a net row) + wheel zoom / drag pan on the board SVG.
+# Static script, no data interpolation; the page degrades to the plain report
+# when JavaScript is unavailable.
+_SCRIPT = """
+(function () {
+  var svg = document.querySelector(".svg-panel svg");
+  if (!svg) return;
+  var current = null;
+  function setNet(net) {
+    svg.querySelectorAll("[data-net]").forEach(function (el) {
+      el.style.opacity = net === null || el.getAttribute("data-net") === net ? "" : "0.12";
+    });
+    document.querySelectorAll("tr.net-row").forEach(function (row) {
+      row.classList.toggle("selected", net !== null && row.getAttribute("data-net") === net);
+    });
+    current = net;
+  }
+  document.querySelectorAll("tr.net-row").forEach(function (row) {
+    row.addEventListener("click", function () {
+      var net = row.getAttribute("data-net");
+      setNet(current === net ? null : net);
+    });
+  });
+  var scale = 1, tx = 0, ty = 0, drag = null;
+  var panel = svg.parentElement;
+  function apply() {
+    svg.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + scale + ")";
+  }
+  panel.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    scale = Math.min(8, Math.max(0.5, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    apply();
+  }, { passive: false });
+  panel.addEventListener("pointerdown", function (e) {
+    drag = [e.clientX - tx, e.clientY - ty];
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (drag) { tx = e.clientX - drag[0]; ty = e.clientY - drag[1]; apply(); }
+  });
+  window.addEventListener("pointerup", function () { drag = null; });
+  panel.addEventListener("dblclick", function () {
+    scale = 1; tx = ty = 0; apply(); setNet(null);
+  });
+})();
 """.strip()
 
 
@@ -110,9 +165,10 @@ def _net_rows(nets: list[dict[str, Any]]) -> str:
         else:
             noun = "airwire" if airwire_count == 1 else "airwires"
             status_cls, status = "status-bad", f"✗ {airwire_count} {noun}"
+        net_name = str(net.get("net", ""))
         rows.append(
-            "<tr>"
-            f"<td>{_esc(net.get('net', ''))}</td>"
+            f'<tr class="net-row" data-net="{html.escape(net_name, quote=True)}">'
+            f"<td>{_esc(net_name)}</td>"
             f'<td class="num">{_esc(net.get("pads", 0))}</td>'
             f'<td class="num">{_esc(net.get("clusters", 0))}</td>'
             f'<td class="num">{_esc(_num(net.get("routed_length_mm", 0)))}</td>'
@@ -196,7 +252,9 @@ def render_report(
         f"{nets_table}\n"
         f"{_issue_section('ERC issues', erc_issues, with_location=False)}\n"
         f"{_issue_section('DRC violations', drc_violations, with_location=True)}\n"
-        "</div>\n</body>\n</html>\n"
+        "</div>\n"
+        + (f"<script>\n{_SCRIPT}\n</script>\n" if svg else "")
+        + "</body>\n</html>\n"
     )
 
 
