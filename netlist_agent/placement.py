@@ -1,9 +1,11 @@
 """Component placement optimizer: simulated annealing over footprint positions.
 
 Minimizes total ratsnest length — the sum over nets of the minimum spanning
-tree length over that net's pad positions — plus a quadratic penalty when two
-components' bounding circles overlap. Existing tracks and zones are ignored:
-this is a pre-route optimizer.
+tree length over that net's pad positions — plus quadratic penalties when two
+components' courtyard rectangles overlap or a rectangle leaves the board
+outline (the ``Edge.Cuts`` bounding box, when the board has one). Components
+named in ``fixed`` never move. Existing tracks and zones are ignored: this is
+a pre-route optimizer.
 
 Each component is modelled as a rigid cluster of pads. ``Board`` does not
 carry footprint origins, so a component's position is its pads' centroid and
@@ -20,10 +22,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .kicad_pcb import Board, _footprint_reference, parse_board, parse_sexpr
+from .kicad_pcb import Board, _footprint_reference, outline_bbox, parse_board, parse_sexpr
 
 _GRID = 0.05  # placement grid in mm
-_OVERLAP_WEIGHT = 100.0  # per mm^2 of bounding-circle overlap depth
+_OVERLAP_WEIGHT = 100.0  # per mm^2 of courtyard overlap / outline excursion
 _MOVE_HI = 10.0  # initial translation magnitude in mm
 _MOVE_LO = 0.1  # final translation magnitude in mm
 _SWAP_PROB = 0.15  # chance a move is a component pair swap
@@ -55,13 +57,20 @@ class PlacementResult:
 class _Component:
     reference: str
     offsets: list[tuple[float, float]]  # pad offsets from the centroid
-    radius: float  # bounding circle: pad reach + pad radius + spacing
+    half_w: float  # courtyard half-extents: pad reach + pad radius + spacing, per axis
+    half_h: float
     movable: bool
     nets: list[int] = field(default_factory=list)
 
 
 def _snap(value: float) -> float:
     return round(round(value / _GRID) * _GRID, 4)
+
+
+def _clamp(value: float, lo: float, hi: float) -> float:
+    if lo > hi:  # rectangle wider than the board: settle for the middle
+        return (lo + hi) / 2
+    return min(max(value, lo), hi)
 
 
 def _mst_length(points: list[tuple[float, float]]) -> float:
@@ -101,13 +110,14 @@ def _build_components(
         cx = sum(p.x for p in pads) / len(pads)
         cy = sum(p.y for p in pads) / len(pads)
         offsets = [(p.x - cx, p.y - cy) for p in pads]
-        reach = max(math.hypot(dx, dy) for dx, dy in offsets)
+        pad_radius = max(p.radius for p in pads)
         index = len(comps)
         comps.append(
             _Component(
                 reference=reference,
                 offsets=offsets,
-                radius=reach + max(p.radius for p in pads) + spacing,
+                half_w=max(abs(dx) for dx, _ in offsets) + pad_radius + spacing,
+                half_h=max(abs(dy) for _, dy in offsets) + pad_radius + spacing,
                 movable=any(p.net_code != 0 for p in pads),
             )
         )
@@ -130,15 +140,38 @@ def _net_length(entries: list[tuple[int, float, float]], positions: list[tuple[f
 
 def _pair_penalty(positions: list[tuple[float, float]], comps: list[_Component], i: int, j: int) -> float:
     (xi, yi), (xj, yj) = positions[i], positions[j]
-    gap = comps[i].radius + comps[j].radius - math.hypot(xj - xi, yj - yi)
-    return _OVERLAP_WEIGHT * gap * gap if gap > 0 else 0.0
+    x_overlap = comps[i].half_w + comps[j].half_w - abs(xj - xi)
+    y_overlap = comps[i].half_h + comps[j].half_h - abs(yj - yi)
+    return _OVERLAP_WEIGHT * x_overlap * y_overlap if x_overlap > 0 and y_overlap > 0 else 0.0
 
 
-def _local_penalty(positions: list[tuple[float, float]], comps: list[_Component], moved: tuple[int, ...]) -> float:
-    """Overlap penalty over every pair touching a moved component (each pair once)."""
+def _bounds_penalty(
+    positions: list[tuple[float, float]],
+    comps: list[_Component],
+    i: int,
+    bbox: tuple[float, float, float, float] | None,
+) -> float:
+    """Quadratic penalty for a component's rectangle poking past the board outline."""
+    if bbox is None:
+        return 0.0
+    x, y = positions[i]
+    comp = comps[i]
+    ex = max(0.0, bbox[0] - (x - comp.half_w)) + max(0.0, (x + comp.half_w) - bbox[2])
+    ey = max(0.0, bbox[1] - (y - comp.half_h)) + max(0.0, (y + comp.half_h) - bbox[3])
+    return _OVERLAP_WEIGHT * (ex * ex + ey * ey)
+
+
+def _local_penalty(
+    positions: list[tuple[float, float]],
+    comps: list[_Component],
+    moved: tuple[int, ...],
+    bbox: tuple[float, float, float, float] | None,
+) -> float:
+    """Overlap penalty over every pair touching a moved component (each pair once), plus outline penalties."""
     moved_set = set(moved)
     total = 0.0
     for i in moved:
+        total += _bounds_penalty(positions, comps, i, bbox)
         for j in range(len(comps)):
             if j == i or (j in moved_set and j < i):
                 continue
@@ -151,11 +184,17 @@ def optimize_placement(
     iterations: int = 5000,
     seed: int = 0,
     spacing: float = 0.5,
+    fixed: set[str] | frozenset[str] | None = None,
 ) -> PlacementResult:
-    """Anneal component centroids to minimize total ratsnest MST length."""
+    """Anneal component centroids to minimize total ratsnest MST length.
+
+    Components whose reference appears in ``fixed`` keep their positions.
+    """
     rng = random.Random(seed)
+    fixed_refs = frozenset(fixed) if fixed else frozenset()
     comps, positions, net_pads = _build_components(board, spacing)
-    movable = [i for i, c in enumerate(comps) if c.movable]
+    movable = [i for i, c in enumerate(comps) if c.movable and c.reference not in fixed_refs]
+    bbox = outline_bbox(board)
 
     net_len = {net: _net_length(entries, positions) for net, entries in net_pads.items()}
     initial_length = sum(net_len.values())
@@ -165,6 +204,7 @@ def optimize_placement(
 
     all_pairs = [(i, j) for i in range(len(comps)) for j in range(i + 1, len(comps))]
     total = initial_length + sum(_pair_penalty(positions, comps, i, j) for i, j in all_pairs)
+    total += sum(_bounds_penalty(positions, comps, i, bbox) for i in range(len(comps)))
     best_total = total
     best_positions = list(positions)
     t_hi = max(1.0, 0.2 * initial_length)
@@ -182,17 +222,20 @@ def optimize_placement(
             a = rng.choice(movable)
             x, y = positions[a]
             moved = (a,)
-            proposal = {
-                a: (_snap(x + rng.uniform(-magnitude, magnitude)), _snap(y + rng.uniform(-magnitude, magnitude)))
-            }
+            nx = _snap(x + rng.uniform(-magnitude, magnitude))
+            ny = _snap(y + rng.uniform(-magnitude, magnitude))
+            if bbox is not None:  # penalties enforce the outline; clamping just converges faster
+                nx = _clamp(nx, bbox[0] + comps[a].half_w, bbox[2] - comps[a].half_w)
+                ny = _clamp(ny, bbox[1] + comps[a].half_h, bbox[3] - comps[a].half_h)
+            proposal = {a: (nx, ny)}
 
         affected = sorted({net for i in moved for net in comps[i].nets})
         saved = {i: positions[i] for i in moved}
-        old_cost = _local_penalty(positions, comps, moved) + sum(net_len[n] for n in affected)
+        old_cost = _local_penalty(positions, comps, moved, bbox) + sum(net_len[n] for n in affected)
         for i, xy in proposal.items():
             positions[i] = xy
         new_lens = {n: _net_length(net_pads[n], positions) for n in affected}
-        delta = _local_penalty(positions, comps, moved) + sum(new_lens.values()) - old_cost
+        delta = _local_penalty(positions, comps, moved, bbox) + sum(new_lens.values()) - old_cost
 
         if delta <= 0 or rng.random() < math.exp(-delta / temperature):
             total += delta
