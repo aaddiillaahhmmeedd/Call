@@ -3,8 +3,9 @@
 Everything is inlined (CSS, board SVG, a small vanilla-JS block) so the
 output can be attached to a PR/issue or opened from disk with no external
 assets. With JavaScript enabled, clicking a net row highlights that net on
-the board SVG and the board panel supports wheel zoom + drag pan; without
-it the page reads as a plain static report. All data values are escaped
+the board SVG, the board panel supports wheel zoom + drag pan, the net
+search box filters the net table, and per-layer toggle buttons show/hide
+the board's layers; without it the page reads as a plain static report. All data values are escaped
 with html.escape; the ``svg`` argument is the one trusted input — it is
 markup this package rendered itself.
 """
@@ -72,11 +73,35 @@ tr.net-row.selected td { background: rgba(64, 140, 255, 0.16); }
 .svg-panel { overflow: hidden; }
 .svg-panel svg { transform-origin: 0 0; }
 .svg-panel [data-net] { transition: opacity 0.15s; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+#net-search {
+  padding: 6px 10px;
+  background: #0b1220;
+  color: #e8edf5;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+#layer-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.layer-toggle {
+  padding: 5px 10px;
+  background: #1a2740;
+  color: #c7d2e4;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.layer-toggle.off { opacity: 0.45; text-decoration: line-through; }
 """.strip()
 
-# Net highlighting (click a net row) + wheel zoom / drag pan on the board SVG.
-# Static script, no data interpolation; the page degrades to the plain report
-# when JavaScript is unavailable.
+# Net highlighting (click a net row), net search, layer visibility toggles,
+# and wheel zoom / drag pan on the board SVG. Static script, no data
+# interpolation; the page degrades to the plain report when JavaScript is
+# unavailable. Highlighting drives opacity while layer toggles drive display,
+# so a hidden layer stays hidden while a net is highlighted.
 _SCRIPT = """
 (function () {
   var svg = document.querySelector(".svg-panel svg");
@@ -117,6 +142,43 @@ _SCRIPT = """
   panel.addEventListener("dblclick", function () {
     scale = 1; tx = ty = 0; apply(); setNet(null);
   });
+  var search = document.getElementById("net-search");
+  if (search) {
+    var filterRows = function () {
+      var query = search.value.toLowerCase();
+      document.querySelectorAll("tr.net-row").forEach(function (row) {
+        var net = (row.getAttribute("data-net") || "").toLowerCase();
+        row.style.display = net.indexOf(query) === -1 ? "none" : "";
+      });
+    };
+    search.addEventListener("input", filterRows);
+    search.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { search.value = ""; filterRows(); }
+    });
+  }
+  var toggles = document.getElementById("layer-toggles");
+  if (toggles) {
+    var layers = [];
+    svg.querySelectorAll("[data-layer]").forEach(function (el) {
+      var layer = el.getAttribute("data-layer");
+      if (layers.indexOf(layer) === -1) layers.push(layer);
+    });
+    layers.forEach(function (layer) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "layer-toggle";
+      button.textContent = layer;
+      button.addEventListener("click", function () {
+        var off = button.classList.toggle("off");
+        svg.querySelectorAll("[data-layer]").forEach(function (el) {
+          if (el.getAttribute("data-layer") === layer) {
+            el.style.display = off ? "none" : "";
+          }
+        });
+      });
+      toggles.appendChild(button);
+    });
+  }
 })();
 """.strip()
 
@@ -224,8 +286,14 @@ def render_report(
         )
     )
 
+    controls = (
+        '<div class="controls">'
+        '<input id="net-search" type="search" placeholder="filter nets…">'
+        '<div id="layer-toggles"></div>'
+        "</div>"
+    )
     svg_panel = (
-        f'<section class="card svg-panel"><h2>Board</h2>{svg}</section>' if svg else ""
+        f'<section class="card svg-panel"><h2>Board</h2>{controls}{svg}</section>' if svg else ""
     )
 
     nets: list[dict[str, Any]] = ratsnest.get("nets", [])
