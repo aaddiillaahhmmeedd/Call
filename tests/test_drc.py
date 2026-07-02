@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from netlist_agent.drc import DrcViolation, check_board
-from netlist_agent.kicad_pcb import Board, Pad, TrackSegment, Via
+from netlist_agent.kicad_pcb import Board, NetClass, Pad, TrackSegment, Via
 
 NETS = {1: "GND", 2: "VCC"}
 
@@ -166,6 +166,48 @@ def test_violations_sorted_by_kind_x_y() -> None:
     )
     kinds = [v.kind for v in check_board(board)]
     assert kinds == ["clearance", "track_width"]
+
+
+def test_net_class_clearance_tightens_check() -> None:
+    # 0.2 mm wide centerlines 0.5 mm apart -> 0.3 mm edge gap: fine at the
+    # global 0.15 mm default, but VCC's "Power" class requires 0.4 mm.
+    segments = [
+        make_segment(0.0, 0.0, 10.0, 0.0, 1),
+        make_segment(0.0, 0.5, 10.0, 0.5, 2),
+    ]
+    clean = Board(nets=dict(NETS), segments=list(segments))
+    assert check_board(clean) == []
+
+    board = Board(
+        nets=dict(NETS),
+        segments=segments,
+        net_classes={"Power": NetClass(name="Power", clearance=0.4, nets=["VCC"])},
+    )
+    violations = check_board(board)
+    assert len(violations) == 1
+    v = violations[0]
+    assert v.kind == "clearance"
+    assert {v.net_a, v.net_b} == {"GND", "VCC"}
+    assert "0.3 mm < required 0.4 mm" in v.message
+
+
+def test_net_class_trace_width_tightens_check() -> None:
+    # Both segments are 0.2 mm wide (>= the 0.15 mm global minimum), but the
+    # VCC segment's "Power" class demands 0.5 mm.
+    board = Board(
+        nets=dict(NETS),
+        segments=[
+            make_segment(0.0, 0.0, 4.0, 0.0, 1),
+            make_segment(0.0, 5.0, 4.0, 5.0, 2),
+        ],
+        net_classes={"Power": NetClass(name="Power", trace_width=0.5, nets=["VCC"])},
+    )
+    violations = check_board(board)
+    assert len(violations) == 1
+    v = violations[0]
+    assert v.kind == "track_width"
+    assert v.net_a == "VCC"
+    assert "0.2 mm < minimum 0.5 mm" in v.message
 
 
 def test_to_dict_round_trip_fields() -> None:
