@@ -30,6 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("output/netlists.json"),
         help="Output JSON file",
     )
+    netlist.add_argument(
+        "--analyze",
+        action="store_true",
+        help="Also run ratsnest + DRC on any board files found in each repo",
+    )
 
     ratsnest = sub.add_parser(
         "ratsnest",
@@ -60,6 +65,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--two-layer",
         action="store_true",
         help="Route on F.Cu + B.Cu with via insertion",
+    )
+    route.add_argument(
+        "--layers",
+        default=None,
+        help="Comma-separated routing layer stack (example: F.Cu,In1.Cu,B.Cu); overrides --two-layer",
     )
     route.add_argument("--width", type=float, default=0.25, help="Track width in mm")
     route.add_argument(
@@ -171,6 +181,15 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--netlist", type=Path, default=None, help="Write XML netlist here")
     export.add_argument("--bom", type=Path, default=None, help="Write BOM CSV here")
 
+    dsn = sub.add_parser(
+        "dsn",
+        help="Export a Specctra DSN file for external autorouters (freerouting).",
+    )
+    dsn.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    dsn.add_argument(
+        "-o", "--output", type=Path, default=Path("output/board.dsn"), help="Output DSN file"
+    )
+
     return parser
 
 
@@ -184,6 +203,16 @@ def _load_board(path: Path):
 
 def _run_netlist(args: argparse.Namespace) -> None:
     agent = NetlistAgent()
+    if args.analyze:
+        results = agent.run_full(query=args.query, limit=args.limit)
+        agent.save_analysis(results, args.output)
+        boards = sum(len(r.boards) for r in results)
+        netlists = sum(len(r.netlists) for r in results)
+        print(
+            f"Analyzed {len(results)} repos: {netlists} netlists/BOMs, "
+            f"{boards} boards -> {args.output}"
+        )
+        return
     netlists = agent.run(query=args.query, limit=args.limit)
     agent.save_json(netlists, args.output)
     print(f"Extracted {len(netlists)} netlists/BOM datasets -> {args.output}")
@@ -248,6 +277,11 @@ def _run_route(args: argparse.Namespace) -> None:
         net_widths = {
             code: width_for_net(board, code, default=args.width) for code in board.nets if code
         }
+    stack: tuple[str, ...] | None = None
+    if args.layers:
+        stack = tuple(layer.strip() for layer in args.layers.split(",") if layer.strip())
+    elif args.two_layer:
+        stack = ("F.Cu", "B.Cu")
     result = route_board(
         board,
         report,
@@ -255,7 +289,7 @@ def _run_route(args: argparse.Namespace) -> None:
         clearance=args.clearance,
         layer=args.layer,
         width=args.width,
-        layers=("F.Cu", "B.Cu") if args.two_layer else None,
+        layers=stack,
         net_widths=net_widths,
         rip_up_retries=args.rip_up,
     )

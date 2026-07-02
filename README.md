@@ -42,8 +42,12 @@ board model.
     requests that touch board files.
 12. **Fabrication bot** — `netlist-agent gerber` exports copper layers as
     Gerber RS-274X plus an Excellon drill file; `netlist-agent export`
-    writes a KiCad XML netlist (ERC round-trip clean) and a grouped BOM CSV
-    from any board.
+    writes a KiCad XML netlist (ERC round-trip clean) and a grouped BOM CSV;
+    `netlist-agent dsn` emits a Specctra DSN for external autorouters.
+
+The router accepts an arbitrary layer stack (`route --layers
+F.Cu,In1.Cu,B.Cu`), and `netlist --analyze` runs the full board pipeline
+(ratsnest + DRC) on every board file inside each mined repository.
 
 Pours support `--thermal` (spoke reliefs on same-net pads) and `--smooth`
 (traced outlines instead of rectangles, with automatic rectangle fallback
