@@ -101,3 +101,62 @@ def test_write_poured_board_parses(zone: Zone, tmp_path: Path) -> None:
     assert written.net_code == 2
     assert written.layer == "B.Cu"
     assert written.polygons == zone.polygons
+
+
+def _inside(zone: Zone, x: float, y: float) -> bool:
+    return any(_point_in_polygon(x, y, poly) for poly in zone.polygons)
+
+
+def _gnd_only_board() -> Board:
+    return Board(
+        nets={0: "", 2: "GND"},
+        pads=[_pad("R1", *GND_A, 2, "GND"), _pad("R2", *GND_B, 2, "GND")],
+    )
+
+
+def test_thermal_reliefs() -> None:
+    board = _gnd_only_board()
+    zone = generate_pour(board, 2, thermal=True, spoke_width=0.3)
+
+    # Pad center and axis-aligned spoke points stay connected to the pour.
+    assert _inside(zone, *GND_A)
+    ring = (0.4 + CLEARANCE) / 2  # halfway through the clearance ring
+    for dx, dy in ((ring, 0.0), (-ring, 0.0), (0.0, ring), (0.0, -ring)):
+        assert _inside(zone, GND_A[0] + dx, GND_A[1] + dy), f"spoke at ({dx}, {dy}) missing"
+
+    # Diagonal points inside the clearance ring are relieved (no copper).
+    diag = ring / math.sqrt(2)
+    for sx, sy in ((diag, diag), (-diag, diag), (diag, -diag), (-diag, -diag)):
+        assert not _inside(zone, GND_A[0] + sx, GND_A[1] + sy), f"ring at ({sx}, {sy}) not relieved"
+
+    # Connectivity through the spokes still closes the net.
+    board.zones.append(zone)
+    gnd = next(n for n in compute_ratsnest(board).nets if n.net_code == 2)
+    assert gnd.fully_routed
+
+
+def test_smooth_traces_single_outline() -> None:
+    zone = generate_pour(_gnd_only_board(), 2, smooth=True)
+
+    assert len(zone.polygons) == 1  # one hole-free region -> one traced ring
+    polygon = zone.polygons[0]
+    assert len(polygon) >= 4
+    for (x1, y1), (x2, y2) in zip(polygon, polygon[1:] + polygon[:1]):
+        assert x1 == x2 or y1 == y2, "smooth outline must stay rectilinear"
+    assert _inside(zone, *GND_A)
+    assert _inside(zone, *GND_B)
+
+
+def test_smooth_falls_back_on_holes() -> None:
+    board = _gnd_only_board()
+    board.pads.append(_pad("U1", *FOREIGN_PAD, 1, "SIG"))
+    board.nets[1] = "SIG"
+    zone = generate_pour(board, 2, smooth=True)
+
+    # The foreign-pad clearance hole forces the rectangle decomposition.
+    assert len(zone.polygons) > 1
+    assert all(len(poly) == 4 for poly in zone.polygons)
+    assert not _inside(zone, *FOREIGN_PAD)
+    ring = (0.4 + CLEARANCE) / 2  # halfway through the clearance ring
+    assert not _inside(zone, FOREIGN_PAD[0] + ring, FOREIGN_PAD[1])
+    assert _inside(zone, *GND_A)

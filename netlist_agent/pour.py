@@ -121,6 +121,94 @@ def _rectangles(region: set[Cell]) -> list[tuple[int, int, int, int]]:
     return rectangles
 
 
+def _has_holes(region: set[Cell]) -> bool:
+    """True when the region encloses cells that are not part of it."""
+    cols = [c for c, _ in region]
+    rows = [r for _, r in region]
+    c_lo, c_hi = min(cols) - 1, max(cols) + 1
+    r_lo, r_hi = min(rows) - 1, max(rows) + 1
+
+    # Flood the complement from outside the (padded) bbox; unreached
+    # complement cells are enclosed holes.
+    seed = (c_lo, r_lo)
+    visited = {seed}
+    queue = deque([seed])
+    while queue:
+        col, row = queue.popleft()
+        for neighbor in ((col + 1, row), (col - 1, row), (col, row + 1), (col, row - 1)):
+            nc, nr = neighbor
+            if c_lo <= nc <= c_hi and r_lo <= nr <= r_hi and neighbor not in region and neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+    complement = (c_hi - c_lo + 1) * (r_hi - r_lo + 1) - len(region)
+    return len(visited) < complement
+
+
+def _trace_boundary(region: set[Cell]) -> list[tuple[int, int]] | None:
+    """Outer boundary of a hole-free region as doubled cell coordinates.
+
+    Each cell (c, r) is the square spanning doubled coords [2c-1, 2c+1] x
+    [2r-1, 2r+1]. Directed boundary edges keep the region on one consistent
+    side; chaining prefers the sharpest turn so pinch vertices stay on the
+    current lobe. Returns None if the walk cannot consume every boundary
+    edge in a single loop (fall back to rectangles then).
+    """
+    edges: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    count = 0
+    for col, row in region:
+        dc, dr = 2 * col, 2 * row
+        sides = (
+            ((col, row - 1), (dc - 1, dr - 1), (dc + 1, dr - 1)),  # top
+            ((col + 1, row), (dc + 1, dr - 1), (dc + 1, dr + 1)),  # right
+            ((col, row + 1), (dc + 1, dr + 1), (dc - 1, dr + 1)),  # bottom
+            ((col - 1, row), (dc - 1, dr + 1), (dc - 1, dr - 1)),  # left
+        )
+        for neighbor, start, end in sides:
+            if neighbor not in region:
+                edges.setdefault(start, []).append(end)
+                count += 1
+
+    start = min(edges)
+    loop = [start]
+    current = start
+    direction: tuple[int, int] | None = None
+    consumed = 0
+    while True:
+        outs = edges.get(current, [])
+        if not outs:
+            return None
+        if direction is None or len(outs) == 1:
+            nxt = min(outs)
+        else:
+            dx, dy = direction
+            preference = [(-dy, dx), (dx, dy), (dy, -dx)]  # sharpest turn first
+            nxt = None
+            for pdx, pdy in preference:
+                candidate = (current[0] + 2 * pdx, current[1] + 2 * pdy)
+                if candidate in outs:
+                    nxt = candidate
+                    break
+            if nxt is None:
+                return None
+        outs.remove(nxt)
+        consumed += 1
+        direction = ((nxt[0] - current[0]) // 2, (nxt[1] - current[1]) // 2)
+        current = nxt
+        if current == start:
+            break
+        loop.append(current)
+    if consumed != count:
+        return None  # more than one boundary loop: pinched region
+
+    simplified: list[tuple[int, int]] = []
+    for i, vertex in enumerate(loop):
+        before = loop[i - 1]
+        after = loop[(i + 1) % len(loop)]
+        if (vertex[0] - before[0], vertex[1] - before[1]) != (after[0] - vertex[0], after[1] - vertex[1]):
+            simplified.append(vertex)
+    return simplified
+
+
 def generate_pour(
     board: Board,
     net_code: int,
@@ -128,6 +216,9 @@ def generate_pour(
     clearance: float = 0.3,
     grid: float = 0.25,
     margin: float = 1.0,
+    thermal: bool = False,
+    spoke_width: float = 0.5,
+    smooth: bool = False,
 ) -> Zone:
     """Fill the net's free area on ``layer`` with rectilinear polygons."""
     xs: list[float] = []
@@ -153,6 +244,7 @@ def generate_pour(
         s for s in board.segments if s.net_code != net_code and s.layer in ("", layer)
     ]
     foreign_vias = [v for v in board.vias if v.net_code != net_code]
+    thermal_pads = [p for p in board.pads if p.net_code == net_code] if thermal else []
 
     def eligible(col: int, row: int) -> bool:
         x = min_x + col * grid
@@ -166,6 +258,14 @@ def generate_pour(
         for via in foreign_vias:
             if math.hypot(x - via.x, y - via.y) <= _VIA_PAD_RADIUS + clearance:
                 return False
+        for pad in thermal_pads:
+            dx, dy = abs(x - pad.x), abs(y - pad.y)
+            if (
+                math.hypot(dx, dy) <= pad.radius + clearance
+                and dx > spoke_width / 2
+                and dy > spoke_width / 2
+            ):
+                return False  # clearance ring around the pad, minus the 4 spokes
         return True
 
     def cell(x: float, y: float) -> Cell:
@@ -195,6 +295,16 @@ def generate_pour(
 
     polygons: list[list[tuple[float, float]]] = []
     for region in kept:
+        if smooth and not _has_holes(region):
+            traced = _trace_boundary(region)
+            if traced is not None:
+                polygons.append(
+                    [
+                        (round(min_x + dc * grid / 2, 4), round(min_y + dr * grid / 2, 4))
+                        for dc, dr in traced
+                    ]
+                )
+                continue
         for c1, c2, r1, r2 in _rectangles(region):
             x_lo = round(min_x + c1 * grid - grid / 2, 4)
             x_hi = round(min_x + c2 * grid + grid / 2, 4)
