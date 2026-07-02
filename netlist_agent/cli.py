@@ -106,8 +106,44 @@ def build_parser() -> argparse.ArgumentParser:
     place.add_argument("--iterations", type=int, default=5000, help="Annealing iterations")
     place.add_argument("--seed", type=int, default=0, help="Random seed")
     place.add_argument("--spacing", type=float, default=0.5, help="Minimum component spacing in mm")
+    place.add_argument(
+        "--fixed",
+        default="",
+        help="Comma-separated references that must not move (example: U1,J1)",
+    )
     place.add_argument("--output", type=Path, default=None, help="Write re-placed .kicad_pcb copy")
     place.add_argument("--svg", type=Path, default=None, help="Render re-placed board as SVG")
+
+    pour = sub.add_parser(
+        "pour",
+        help="Generate a copper pour (filled zone) for a net, avoiding foreign copper.",
+    )
+    pour.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
+    pour.add_argument("--net", required=True, help="Net name to pour (example: GND)")
+    pour.add_argument("--layer", default="B.Cu", help="Copper layer for the pour")
+    pour.add_argument("--clearance", type=float, default=0.3, help="Clearance to foreign copper in mm")
+    pour.add_argument("--grid", type=float, default=0.25, help="Fill grid in mm")
+    pour.add_argument("--output", type=Path, default=None, help="Write poured .kicad_pcb copy")
+    pour.add_argument("--svg", type=Path, default=None, help="Render poured board as SVG")
+
+    lengths = sub.add_parser(
+        "lengths",
+        help="Report net lengths and differential-pair skew.",
+    )
+    lengths.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    lengths.add_argument(
+        "--tolerance", type=float, default=0.5, help="Allowed diff-pair skew in mm"
+    )
+    lengths.add_argument("--json", type=Path, default=None, help="Write report as JSON")
+
+    batch = sub.add_parser(
+        "batch",
+        help="Analyze every board file under a directory tree.",
+    )
+    batch.add_argument("root", type=Path, help="Directory to scan for .kicad_pcb/.brd files")
+    batch.add_argument("--clearance", type=float, default=0.15, help="DRC clearance in mm")
+    batch.add_argument("--json", type=Path, default=None, help="Write full results as JSON")
+    batch.add_argument("--markdown", type=Path, default=None, help="Write index as markdown")
 
     return parser
 
@@ -296,8 +332,9 @@ def _run_place(args: argparse.Namespace) -> None:
     from .placement import optimize_placement, write_placed_board
 
     board = _load_board(args.board)
+    fixed = {ref.strip() for ref in args.fixed.split(",") if ref.strip()} or None
     result = optimize_placement(
-        board, iterations=args.iterations, seed=args.seed, spacing=args.spacing
+        board, iterations=args.iterations, seed=args.seed, spacing=args.spacing, fixed=fixed
     )
     summary = result.to_dict()
     print(
@@ -315,6 +352,85 @@ def _run_place(args: argparse.Namespace) -> None:
             print(f"Placed SVG -> {args.svg}")
     elif args.svg:
         raise SystemExit("--svg requires --output (the SVG renders the re-placed board file)")
+
+
+def _run_pour(args: argparse.Namespace) -> None:
+    from .pour import generate_pour, write_poured_board
+
+    board = _load_board(args.board)
+    matches = [code for code, name in board.nets.items() if name.lstrip("/") == args.net.lstrip("/")]
+    if not matches:
+        raise SystemExit(f"{args.board.name}: no net named {args.net!r}")
+    zone = generate_pour(
+        board, matches[0], layer=args.layer, clearance=args.clearance, grid=args.grid
+    )
+    print(
+        f"{args.board.name}: poured {args.net} on {args.layer} — "
+        f"{len(zone.polygons)} polygon(s), {sum(len(p) for p in zone.polygons)} vertices"
+    )
+    if args.output:
+        write_poured_board(args.board, [zone], args.output)
+        print(f"Poured board -> {args.output}")
+        if args.svg:
+            poured = _load_board(args.output)
+            render_svg(poured, compute_ratsnest(poured), args.svg)
+            print(f"Poured SVG -> {args.svg}")
+    elif args.svg:
+        board.zones.append(zone)
+        render_svg(board, compute_ratsnest(board), args.svg)
+        print(f"Poured SVG -> {args.svg}")
+
+
+def _run_lengths(args: argparse.Namespace) -> None:
+    from .length_match import check_pairs, net_lengths
+
+    board = _load_board(args.board)
+    lengths = net_lengths(board)
+    pairs = check_pairs(board, tolerance=args.tolerance)
+
+    for length in lengths:
+        print(
+            f"  {length.net_name}: {length.routed_length:.2f} mm routed"
+            + (f", {length.unrouted_length:.2f} mm unrouted" if length.unrouted_length else "")
+        )
+    for pair in pairs:
+        status = "ok" if pair.skew <= pair.tolerance else "SKEW"
+        print(
+            f"  [{status}] {pair.base_name}: {pair.pos_net}={pair.pos_length:.2f} mm "
+            f"{pair.neg_net}={pair.neg_length:.2f} mm (skew {pair.skew:.3f} mm)"
+        )
+    if not pairs:
+        print("  no differential pairs detected")
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(
+            json.dumps(
+                {
+                    "nets": [l.to_dict() for l in lengths],
+                    "pairs": [p.to_dict() for p in pairs],
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        print(f"Report -> {args.json}")
+
+
+def _run_batch(args: argparse.Namespace) -> None:
+    from .pipeline import analyze_tree, index_json, index_markdown
+
+    results = analyze_tree(args.root, clearance=args.clearance)
+    print(index_markdown(results))
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(index_json(results), indent=2), encoding="utf-8")
+        print(f"Results -> {args.json}")
+    if args.markdown:
+        args.markdown.parent.mkdir(parents=True, exist_ok=True)
+        args.markdown.write_text(index_markdown(results), encoding="utf-8")
+        print(f"Index -> {args.markdown}")
 
 
 def main() -> None:
@@ -335,6 +451,12 @@ def main() -> None:
         _run_summary(args)
     elif args.command == "place":
         _run_place(args)
+    elif args.command == "pour":
+        _run_pour(args)
+    elif args.command == "lengths":
+        _run_lengths(args)
+    elif args.command == "batch":
+        _run_batch(args)
 
 
 if __name__ == "__main__":
