@@ -1,0 +1,74 @@
+name: PCB Report
+
+on:
+  pull_request:
+    paths:
+      - "**/*.kicad_pcb"
+      - "**/*.brd"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.boards.outputs.changed }}
+      files: ${{ steps.boards.outputs.files }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Find board files changed in the PR
+        id: boards
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          base=$(git merge-base "origin/$BASE_REF" HEAD)
+          files=$(git diff --name-only --diff-filter=d "$base" HEAD -- '*.kicad_pcb' '*.brd')
+          if [ -n "$files" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "files<<EOF"
+              echo "$files"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  report:
+    needs: detect
+    if: needs.detect.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - name: Build summary for each changed board
+        env:
+          BOARDS: ${{ needs.detect.outputs.files }}
+        run: |
+          echo '<!-- pcb-report -->' > summary.md
+          while IFS= read -r board; do
+            [ -f "$board" ] || continue
+            netlist-agent summary "$board" >> summary.md
+            echo "" >> summary.md
+          done <<< "$BOARDS"
+      - name: Find existing report comment
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "<!-- pcb-report -->"
+      - name: Create or update sticky comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: summary.md
+          edit-mode: replace
