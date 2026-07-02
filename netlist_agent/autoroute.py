@@ -25,13 +25,23 @@ Algorithm, per airwire (nets iterated in report order):
    all layers, so later airwires of other nets avoid them, while later
    same-net routes still pass through them freely.
 
-Airwires with no path are reported in ``failed`` and routing continues.
+Airwires with no path are reported in ``failed`` and routing continues —
+unless ``rip_up_retries`` allows tearing out previously routed airwires that
+block the corridor: the blocker's copper is removed, the failed airwire is
+retried first, and the ripped airwires are re-queued. Only copper created
+during this run is ever ripped, each airwire funds at most ``rip_up_retries``
+rip-ups, and a global step bound guarantees termination.
+
+``net_widths`` assigns per-net track widths (falling back to ``width``); a
+net's width sets both its new segments and the clearance inflation used when
+routing it or avoiding it.
 """
 
 from __future__ import annotations
 
 import heapq
 import math
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -97,6 +107,9 @@ class _Router:
     # Per-layer segment blocking (two-layer mode); False keeps the v1 rule
     # that existing segments block regardless of their layer.
     per_layer: bool = False
+    net_widths: dict[int, float] | None = None
+    # Track width of the net currently being routed; drives clearance inflation.
+    active_width: float = 0.0
     min_x: float = 0.0
     min_y: float = 0.0
     cols: int = 0
@@ -104,11 +117,13 @@ class _Router:
     _layer_index: dict[str, int] = field(default_factory=dict)
     # Static obstacles per routed net (one cell set per layer), rasterized on first use.
     _static_blocked: dict[int, list[set[Cell]]] = field(default_factory=dict)
-    # (net_code, layer_index, cells) for copper created during this routing run;
+    # (owner, net_code, layer_index, cells) for copper created during this run;
     # layer_index is _ALL_LAYERS for vias, which pass through the whole board.
-    _dynamic_blocked: list[tuple[int, int, set[Cell]]] = field(default_factory=list)
+    # The owner tag lets rip-up remove one airwire's copper.
+    _dynamic_blocked: list[tuple[int, int, int, set[Cell]]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        self.active_width = self.width
         self._layer_index = {name: i for i, name in enumerate(self.layers)}
         xs: list[float] = []
         ys: list[float] = []
@@ -128,9 +143,12 @@ class _Router:
         self.cols = int(round((max(xs) + _MARGIN_MM - self.min_x) / self.grid)) + 1
         self.rows = int(round((max(ys) + _MARGIN_MM - self.min_y) / self.grid)) + 1
 
+    def width_for(self, net_code: int) -> float:
+        return (self.net_widths or {}).get(net_code, self.width)
+
     @property
     def _inflation(self) -> float:
-        return self.clearance + self.width / 2
+        return self.clearance + self.active_width / 2
 
     def cell(self, x: float, y: float) -> Cell:
         col = min(max(int(round((x - self.min_x) / self.grid)), 0), self.cols - 1)
@@ -201,7 +219,7 @@ class _Router:
 
     def _blocked_for(self, net_code: int) -> list[set[Cell]]:
         blocked = [set(cells) for cells in self._static_for(net_code)]
-        for other_net, layer_idx, cells in self._dynamic_blocked:
+        for _owner, other_net, layer_idx, cells in self._dynamic_blocked:
             if other_net == net_code:
                 continue
             if layer_idx == _ALL_LAYERS:
@@ -211,13 +229,25 @@ class _Router:
                 blocked[layer_idx] |= cells
         return blocked
 
-    def add_segment(self, seg: TrackSegment) -> None:
+    def add_segment(self, seg: TrackSegment, owner: int) -> None:
         self._dynamic_blocked.append(
-            (seg.net_code, self._layer_index[seg.layer], self._segment_cells(seg))
+            (owner, seg.net_code, self._layer_index[seg.layer], self._segment_cells(seg))
         )
 
-    def add_via(self, via: Via) -> None:
-        self._dynamic_blocked.append((via.net_code, _ALL_LAYERS, self._via_cells(via.x, via.y)))
+    def add_via(self, via: Via, owner: int) -> None:
+        self._dynamic_blocked.append(
+            (owner, via.net_code, _ALL_LAYERS, self._via_cells(via.x, via.y))
+        )
+
+    def remove_owner(self, owner: int) -> None:
+        self._dynamic_blocked = [e for e in self._dynamic_blocked if e[0] != owner]
+
+    def owner_cells(self, owner: int) -> set[Cell]:
+        cells: set[Cell] = set()
+        for entry_owner, _net, _layer, entry_cells in self._dynamic_blocked:
+            if entry_owner == owner:
+                cells |= entry_cells
+        return cells
 
     def astar(self, start: Cell, goal: Cell, blocked: list[set[Cell]]) -> list[Node] | None:
         """A* over (col, row, layer); start/goal cells are traversable even if blocked."""
@@ -287,7 +317,7 @@ class _Router:
             segments.append(
                 TrackSegment(
                     x1=x1, y1=y1, x2=x2, y2=y2,
-                    width=self.width, layer=self.layers[layer_idx], net_code=net_code,
+                    width=self.active_width, layer=self.layers[layer_idx], net_code=net_code,
                 )
             )
         return segments
@@ -311,6 +341,17 @@ class _Router:
         return segments, vias
 
 
+def _cell_line_distance(cell: Cell, a: Cell, b: Cell) -> float:
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length_sq = dx * dx + dy * dy
+    if length_sq == 0:
+        return math.hypot(cell[0] - a[0], cell[1] - a[1])
+    t = max(0.0, min(1.0, ((cell[0] - a[0]) * dx + (cell[1] - a[1]) * dy) / length_sq))
+    return math.hypot(cell[0] - (a[0] + t * dx), cell[1] - (a[1] + t * dy))
+
+_RIP_CORRIDOR_CELLS = 3.0  # copper within this many cells of the straight line "blocks" it
+
+
 def route_board(
     board: Board,
     report: RatsnestReport,
@@ -320,12 +361,16 @@ def route_board(
     width: float = 0.25,
     layers: tuple[str, str] | None = None,
     via_cost: float = 5.0,
+    net_widths: dict[int, float] | None = None,
+    rip_up_retries: int = 2,
 ) -> RouteResult:
     """Route every airwire in ``report``.
 
     With ``layers`` unset, route on the single copper layer ``layer``. With
     ``layers`` set (e.g. ``("F.Cu", "B.Cu")``), route across both layers,
-    inserting vias where the path switches layers.
+    inserting vias where the path switches layers. ``net_widths`` overrides
+    the track width per net_code; ``rip_up_retries`` bounds how many blocking
+    airwires a failed airwire may rip up and reroute.
     """
     router = _Router(
         board=board,
@@ -335,26 +380,67 @@ def route_board(
         layers=layers if layers is not None else (layer,),
         via_cost=via_cost,
         per_layer=layers is not None,
+        net_widths=net_widths,
     )
-    result = RouteResult(segments=[], routed=[], failed=[], vias=[])
 
-    for net in report.nets:
-        for airwire in net.airwires:
-            start = router.cell(airwire.x1, airwire.y1)
-            goal = router.cell(airwire.x2, airwire.y2)
-            path = router.astar(start, goal, router._blocked_for(airwire.net_code))
-            if path is None:
-                result.failed.append(airwire)
+    airwires = [a for net in report.nets for a in net.airwires]
+    pending: deque[Airwire] = deque(airwires)
+    placed: dict[int, tuple[Airwire, list[TrackSegment], list[Via]]] = {}
+    order: list[int] = []  # owners in routing order, for most-recent-first rip-up
+    failed: list[Airwire] = []
+    rip_budget = {id(a): rip_up_retries for a in airwires}
+    next_owner = 0
+    max_steps = max(1, len(airwires)) * (rip_up_retries + 2) * 4
+
+    def rip_candidate(net_code: int, start: Cell, goal: Cell) -> int | None:
+        fallback: int | None = None
+        for owner in reversed(order):
+            if placed[owner][0].net_code == net_code:
                 continue
+            if fallback is None:
+                fallback = owner
+            cells = router.owner_cells(owner)
+            if any(_cell_line_distance(c, start, goal) <= _RIP_CORRIDOR_CELLS for c in cells):
+                return owner
+        return fallback
+
+    steps = 0
+    while pending:
+        steps += 1
+        airwire = pending.popleft()
+        router.active_width = router.width_for(airwire.net_code)
+        start = router.cell(airwire.x1, airwire.y1)
+        goal = router.cell(airwire.x2, airwire.y2)
+        path = router.astar(start, goal, router._blocked_for(airwire.net_code))
+
+        if path is not None:
             segments, vias = router.path_to_routes(path, airwire.net_code)
             for segment in segments:
-                result.segments.append(segment)
-                router.add_segment(segment)
+                router.add_segment(segment, next_owner)
             for via in vias:
-                result.vias.append(via)
-                router.add_via(via)
-            result.routed.append(airwire)
+                router.add_via(via, next_owner)
+            placed[next_owner] = (airwire, segments, vias)
+            order.append(next_owner)
+            next_owner += 1
+            continue
 
+        blocker = rip_candidate(airwire.net_code, start, goal) if steps < max_steps else None
+        if rip_budget.get(id(airwire), 0) > 0 and blocker is not None:
+            rip_budget[id(airwire)] -= 1
+            ripped_airwire = placed.pop(blocker)[0]
+            order.remove(blocker)
+            router.remove_owner(blocker)
+            pending.appendleft(airwire)  # retry through the freed corridor first
+            pending.append(ripped_airwire)
+        else:
+            failed.append(airwire)
+
+    result = RouteResult(segments=[], routed=[], failed=failed, vias=[])
+    for owner in order:
+        airwire, segments, vias = placed[owner]
+        result.routed.append(airwire)
+        result.segments.extend(segments)
+        result.vias.extend(vias)
     return result
 
 
