@@ -5,10 +5,14 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .github_client import GitHubClient
 from .models import BoardNetlist
 from .pcb_extractors import extract_from_file
+
+if TYPE_CHECKING:
+    from .pipeline import RepoAnalysis
 
 
 class NetlistAgent:
@@ -24,6 +28,21 @@ class NetlistAgent:
                 local_repo = Path(tmp) / repo.full_name.replace("/", "_")
                 self._shallow_clone(repo.clone_url, local_repo)
                 results.extend(self._collect_netlists(repo.full_name, local_repo))
+
+        return results
+
+    def run_full(self, query: str, limit: int = 5, clearance: float = 0.15) -> list[RepoAnalysis]:
+        """Mine repos like :meth:`run`, but also analyze any boards they contain."""
+        from .pipeline import analyze_repo_dir  # lazy: avoids an import cycle
+
+        repos = self.github.search_pcb_repos(query=query, limit=limit)
+        results: list[RepoAnalysis] = []
+
+        for repo in repos:
+            with tempfile.TemporaryDirectory(prefix="netlist-agent-") as tmp:
+                local_repo = Path(tmp) / repo.full_name.replace("/", "_")
+                self._shallow_clone(repo.clone_url, local_repo)
+                results.append(analyze_repo_dir(repo.full_name, local_repo, clearance=clearance))
 
         return results
 
@@ -55,3 +74,12 @@ class NetlistAgent:
             if parsed:
                 netlists.append(parsed)
         return netlists
+
+
+def save_analysis(results: list[RepoAnalysis], output_file: Path) -> None:
+    """Write a ``run_full`` result to ``output_file`` as JSON."""
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(
+        json.dumps([analysis.to_dict() for analysis in results], indent=2),
+        encoding="utf-8",
+    )
