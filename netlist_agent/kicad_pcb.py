@@ -70,6 +70,7 @@ class Board:
     vias: list[Via] = field(default_factory=list)
     zones: list[Zone] = field(default_factory=list)
     net_classes: dict[str, NetClass] = field(default_factory=dict)
+    edge_segments: list[TrackSegment] = field(default_factory=list)  # board outline on Edge.Cuts
 
 
 def tokenize(text: str) -> list[str]:
@@ -225,6 +226,24 @@ def _parse_net_class(expr: SExpr) -> NetClass:
     )
 
 
+def _layer_name(expr: SExpr) -> str:
+    layer_expr = _child(expr, "layer")
+    return str(layer_expr[1]) if layer_expr and len(layer_expr) > 1 else ""
+
+
+def _edge_segment(x1: float, y1: float, x2: float, y2: float) -> TrackSegment:
+    return TrackSegment(x1=x1, y1=y1, x2=x2, y2=y2, width=0.0, layer="Edge.Cuts", net_code=0)
+
+
+def outline_bbox(board: Board) -> tuple[float, float, float, float] | None:
+    """Bounding box (min_x, min_y, max_x, max_y) of the board outline, or None without one."""
+    if not board.edge_segments:
+        return None
+    xs = [x for seg in board.edge_segments for x in (seg.x1, seg.x2)]
+    ys = [y for seg in board.edge_segments for y in (seg.y1, seg.y2)]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def _plain_net_name(name: str) -> str:
     return name[1:] if name.startswith("/") else name
 
@@ -315,6 +334,27 @@ def parse_board(path: Path | str) -> Board:
         net_expr = _child(via, "net")
         board.vias.append(
             Via(x=vx, y=vy, net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0)
+        )
+
+    for line in _children(root, "gr_line"):
+        if _layer_name(line) != "Edge.Cuts":
+            continue
+        x1, y1 = _floats(_child(line, "start"), 2)
+        x2, y2 = _floats(_child(line, "end"), 2)
+        board.edge_segments.append(_edge_segment(x1, y1, x2, y2))
+
+    for rect in _children(root, "gr_rect"):
+        if _layer_name(rect) != "Edge.Cuts":
+            continue
+        x1, y1 = _floats(_child(rect, "start"), 2)
+        x2, y2 = _floats(_child(rect, "end"), 2)
+        board.edge_segments.extend(
+            (
+                _edge_segment(x1, y1, x2, y1),
+                _edge_segment(x2, y1, x2, y2),
+                _edge_segment(x2, y2, x1, y2),
+                _edge_segment(x1, y2, x1, y1),
+            )
         )
 
     for zone in _children(root, "zone"):
