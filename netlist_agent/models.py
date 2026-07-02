@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
@@ -33,9 +33,10 @@ class BoardNetlist:
     nets: list[NetConnection]
 
     def to_dict(self) -> dict[str, Any]:
+        # slots=True dataclasses have no __dict__; asdict handles them.
         return {
             "repo": self.repo,
             "path": self.path,
-            "components": [c.__dict__ for c in self.components],
-            "nets": [n.__dict__ for n in self.nets],
+            "components": [asdict(c) for c in self.components],
+            "nets": [asdict(n) for n in self.nets],
         }
