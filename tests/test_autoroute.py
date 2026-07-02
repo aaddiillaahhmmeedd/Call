@@ -16,6 +16,11 @@ WALL_X = 105.0
 WALL_WIDTH = 5.0
 CLEARANCE = 0.2
 
+# A second net-2 wall on B.Cu whose inflated footprint overlaps the F.Cu
+# wall's: no via site exists between them, so a two-layer route cannot weave
+# through, but a three-layer route can cross on In1.Cu.
+BACK_WALL_X = 107.0
+
 
 def _pad(ref: str, x: float, y: float, net_code: int, net_name: str, radius: float = 0.4) -> Pad:
     return Pad(reference=ref, pad_name="1", x=x, y=y, net_code=net_code, net_name=net_name, radius=radius)
@@ -48,6 +53,13 @@ def _wall_board() -> Board:
         ],
         segments=_wall_segments(),
     )
+
+
+def _back_wall_segments() -> list[TrackSegment]:
+    return [
+        TrackSegment(x1=BACK_WALL_X, y1=95.0, x2=BACK_WALL_X, y2=100.0, width=WALL_WIDTH, layer="B.Cu", net_code=2),
+        TrackSegment(x1=BACK_WALL_X, y1=100.0, x2=BACK_WALL_X, y2=105.0, width=WALL_WIDTH, layer="B.Cu", net_code=2),
+    ]
 
 
 def _point_segment_distance(px: float, py: float, seg: TrackSegment) -> float:
@@ -222,6 +234,89 @@ def test_write_routed_board_with_vias(tmp_path: Path) -> None:
     n1 = next(n for n in after.nets if n.net_code == 1)
     assert n1.fully_routed
     assert not n1.airwires
+
+
+def test_three_layer_route(tmp_path: Path) -> None:
+    source = tmp_path / "double_wall.kicad_pcb"
+    source.write_text(
+        '(kicad_pcb (version 20221018) (generator test)\n'
+        '  (net 0 "")\n'
+        '  (net 1 "N1")\n'
+        '  (net 2 "GND")\n'
+        '  (footprint "test:R" (at 100 100) (property "Reference" "R1")\n'
+        '    (pad "1" smd rect (at 0 0) (size 0.8 0.8) (net 1 "N1")))\n'
+        '  (footprint "test:R" (at 110 100) (property "Reference" "R2")\n'
+        '    (pad "1" smd rect (at 0 0) (size 0.8 0.8) (net 1 "N1")))\n'
+        f'  (segment (start {WALL_X} 95) (end {WALL_X} 100) (width {WALL_WIDTH}) (layer "F.Cu") (net 2))\n'
+        f'  (segment (start {WALL_X} 100) (end {WALL_X} 105) (width {WALL_WIDTH}) (layer "F.Cu") (net 2))\n'
+        f'  (segment (start {BACK_WALL_X} 95) (end {BACK_WALL_X} 100) (width {WALL_WIDTH}) (layer "B.Cu") (net 2))\n'
+        f'  (segment (start {BACK_WALL_X} 100) (end {BACK_WALL_X} 105) (width {WALL_WIDTH}) (layer "B.Cu") (net 2))\n'
+        # Strap tying the walls into one GND cluster (connectivity is layer-agnostic).
+        f'  (segment (start {WALL_X} 95) (end {BACK_WALL_X} 95) (width {WALL_WIDTH}) (layer "B.Cu") (net 2))\n'
+        ')\n',
+        encoding="utf-8",
+    )
+
+    board = parse_board(source)
+    report = compute_ratsnest(board)
+    assert len(report.airwires) == 1  # sanity: one N1 airwire, GND walls are one cluster
+    airwire = report.airwires[0]
+
+    # The walls' inflated footprints overlap, so no cell between them is free
+    # on both outer layers: through-hole vias have nowhere to land and a
+    # two-layer route cannot get across.
+    two_layer = route_board(board, report, layers=("F.Cu", "B.Cu"))
+    assert two_layer.failed == [airwire]
+    assert not two_layer.routed
+
+    # A third layer opens a corridor: dive below both walls on In1.Cu.
+    result = route_board(board, report, layers=("F.Cu", "In1.Cu", "B.Cu"))
+    assert result.routed == [airwire]
+    assert not result.failed
+    assert len(result.vias) >= 2
+    assert result.layer_stack == ("F.Cu", "In1.Cu", "B.Cu")
+    layers_used = {s.layer for s in result.segments}
+    assert "In1.Cu" in layers_used
+    assert layers_used <= {"F.Cu", "In1.Cu", "B.Cu"}
+
+    # Every via clears both walls' net-2 copper (centerline minus half-width).
+    for via in result.vias:
+        assert via.net_code == 1
+        for wall in _wall_segments() + _back_wall_segments():
+            gap = _point_segment_distance(via.x, via.y, wall) - WALL_WIDTH / 2
+            assert gap > CLEARANCE
+
+    # Vias span the outer layers of the routing stack in the written board.
+    output = tmp_path / "double_wall_routed.kicad_pcb"
+    write_routed_board(source, result, output)
+    text = output.read_text(encoding="utf-8")
+    assert text.count("(via ") == len(result.vias)
+    assert '(size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu")' in text
+    assert '"In1.Cu"' in text  # the inner-layer segments survive the round trip
+
+    # The written board re-parses and the new copper closes N1.
+    parsed = parse_board(output)
+    assert len(parsed.segments) == len(board.segments) + len(result.segments)
+    assert len(parsed.vias) == len(result.vias)
+    after = compute_ratsnest(parsed)
+    n1 = next(n for n in after.nets if n.net_code == 1)
+    assert n1.fully_routed
+    assert not n1.airwires
+
+
+def test_single_layer_tuple_behaves_like_single_layer() -> None:
+    board = _wall_board()
+    report = compute_ratsnest(board)
+    assert len(report.airwires) == 1
+    airwire = report.airwires[0]
+
+    # A one-element stack has no layer to dive to: the F.Cu wall still wins.
+    result = route_board(board, report, layers=("F.Cu",))
+    assert result.failed == [airwire]
+    assert not result.routed
+    assert not result.segments
+    assert not result.vias
+    assert result.layer_stack == ("F.Cu",)
 
 
 def _box_walls() -> list[TrackSegment]:
