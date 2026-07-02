@@ -35,10 +35,19 @@ board model.
 9. **Batch bot** — `netlist-agent batch <dir>` analyzes every board file
    under a tree into one JSON/markdown index.
 10. **Report bot** — one-shot standalone HTML report combining ratsnest,
-    DRC, optional ERC, and the board SVG.
+    DRC, optional ERC, and the board SVG — interactive: click a net row to
+    highlight it on the board, wheel-zoom and drag-pan the view.
 11. **PR comment bot** — `netlist-agent summary` prints a markdown summary,
     and the `pcb-report.yml` workflow posts it as a sticky comment on pull
     requests that touch board files.
+12. **Fabrication bot** — `netlist-agent gerber` exports copper layers as
+    Gerber RS-274X plus an Excellon drill file; `netlist-agent export`
+    writes a KiCad XML netlist (ERC round-trip clean) and a grouped BOM CSV
+    from any board.
+
+Pours support `--thermal` (spoke reliefs on same-net pads) and `--smooth`
+(traced outlines instead of rectangles, with automatic rectangle fallback
+around clearance holes).
 
 DRC and routing honor KiCad legacy `(net_class ...)` blocks: per-net
 clearance (the larger of the two nets' classes wins) and trace widths.
@@ -80,6 +89,10 @@ netlist-agent lengths path/to/board.kicad_pcb --tolerance 0.5
 
 # Analyze every board under a directory
 netlist-agent batch path/to/projects --json output/boards.json
+
+# Fabrication outputs
+netlist-agent gerber path/to/board.kicad_pcb -o output/gerbers
+netlist-agent export path/to/board.kicad_pcb --netlist output/board.net --bom output/bom.csv
 ```
 
 Optional authentication for higher GitHub API limits:

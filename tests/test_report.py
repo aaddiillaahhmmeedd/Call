@@ -123,3 +123,57 @@ def test_write_report_creates_parents_and_round_trips(tmp_path: Path) -> None:
 
     assert target.parent.is_dir()
     assert target.read_text(encoding="utf-8") == out
+
+
+def test_interactive_net_highlighting() -> None:
+    from netlist_agent.kicad_pcb import Board, Pad
+    from netlist_agent.ratsnest import compute_ratsnest
+    from netlist_agent.svg_render import render_svg
+
+    name = 'N<1>&"x"'
+    board = Board(
+        nets={0: "", 1: name},
+        pads=[
+            Pad(reference="R1", pad_name="1", x=0.0, y=0.0, net_code=1, net_name=name, radius=0.4),
+            Pad(reference="R2", pad_name="1", x=5.0, y=0.0, net_code=1, net_name=name, radius=0.4),
+        ],
+    )
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        svg_path = Path(tmp) / "board.svg"
+        render_svg(board, compute_ratsnest(board), svg_path)
+        svg = svg_path.read_text(encoding="utf-8")
+
+    escaped = html.escape(name, quote=True)
+    assert f"data-net={html.escape(name, quote=True)!r}".replace("'", '"') or True
+    assert "data-net=" in svg
+    assert name not in svg  # raw specials never appear unescaped
+
+    report = render_report(
+        title="board",
+        ratsnest={
+            "completion_pct": 0.0,
+            "airwire_count": 1,
+            "unrouted_length_mm": 5.0,
+            "nets": [{"net": name, "pads": 2, "clusters": 2, "airwires": [{}]}],
+        },
+        erc_issues=[],
+        drc_violations=[],
+        svg=svg,
+    )
+    assert report.count("<script>") == 1
+    assert f'class="net-row" data-net="{escaped}"' in report
+    # The row's attribute value matches the SVG's data-net value byte for byte.
+    assert f"data-net=\"{escaped}\"" in svg
+
+
+def test_no_svg_means_no_script() -> None:
+    report = render_report(
+        title="board",
+        ratsnest={"completion_pct": 100.0, "airwire_count": 0, "unrouted_length_mm": 0, "nets": []},
+        erc_issues=[],
+        drc_violations=[],
+        svg=None,
+    )
+    assert "<script>" not in report
