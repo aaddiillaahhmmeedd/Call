@@ -18,6 +18,19 @@ Algorithm (``generate_pour``):
    centers inflated by grid/2) covers only eligible cells, so the pour
    never claims copper of a foreign net.
 
+Two optional refinements:
+
+- ``thermal=True`` blocks the clearance ring around same-net pads too,
+  except for four axis-aligned spoke corridors of ``spoke_width`` through
+  the pad center, so pads connect to the pour through thermal reliefs
+  rather than solid copper.
+- ``smooth=True`` replaces the rectangle decomposition of a region with a
+  single outer-boundary polygon traced along cell-square corners.
+  ``Zone.polygons`` has no hole semantics, so a region that encloses
+  ineligible cells (holes come precisely from foreign-copper clearance)
+  keeps the rectangle decomposition instead — the pour must never claim
+  foreign copper.
+
 ``write_poured_board`` inserts the zones into the source board text so that
 ``parse_board`` reads them back.
 """
