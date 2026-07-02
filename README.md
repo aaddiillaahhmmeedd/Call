@@ -25,13 +25,20 @@ board model.
    boards, and net-class `trace_width` rules set per-net track widths.
    Writes a routed board copy.
 6. **Placement bot** — simulated-annealing component placement that
-   minimizes total ratsnest length with an overlap penalty; writes a
-   re-placed board copy.
-7. **Report bot** — one-shot standalone HTML report combining ratsnest,
-   DRC, optional ERC, and the board SVG.
-8. **PR comment bot** — `netlist-agent summary` prints a markdown summary,
-   and the `pcb-report.yml` workflow posts it as a sticky comment on pull
-   requests that touch board files.
+   minimizes total ratsnest length with rectangular-courtyard overlap
+   penalties, honors `--fixed` locked references and Edge.Cuts board
+   outlines, and writes a re-placed board copy.
+7. **Pour bot** — generates a filled copper zone for a net (typically GND)
+   over the board, keeping clearance holes around foreign copper.
+8. **Length bot** — per-net routed/unrouted lengths plus differential-pair
+   detection (`_P/_N`, `+/-`, …) and skew checking.
+9. **Batch bot** — `netlist-agent batch <dir>` analyzes every board file
+   under a tree into one JSON/markdown index.
+10. **Report bot** — one-shot standalone HTML report combining ratsnest,
+    DRC, optional ERC, and the board SVG.
+11. **PR comment bot** — `netlist-agent summary` prints a markdown summary,
+    and the `pcb-report.yml` workflow posts it as a sticky comment on pull
+    requests that touch board files.
 
 DRC and routing honor KiCad legacy `(net_class ...)` blocks: per-net
 clearance (the larger of the two nets' classes wins) and trace widths.
@@ -64,6 +71,15 @@ netlist-agent report path/to/board.kicad_pcb --netlist path/to/schematic.net -o 
 
 # Markdown summary for PR comments (used by .github/workflows/pcb-report.yml)
 netlist-agent summary path/to/board.kicad_pcb --netlist path/to/schematic.net
+
+# Pour a GND zone on the back copper
+netlist-agent pour path/to/board.kicad_pcb --net GND --layer B.Cu --output output/poured.kicad_pcb
+
+# Net lengths + differential-pair skew
+netlist-agent lengths path/to/board.kicad_pcb --tolerance 0.5
+
+# Analyze every board under a directory
+netlist-agent batch path/to/projects --json output/boards.json
 ```
 
 Optional authentication for higher GitHub API limits:
