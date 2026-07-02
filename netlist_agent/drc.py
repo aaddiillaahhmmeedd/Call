@@ -3,7 +3,10 @@
 Runs simple electrical clearance and track-width checks over the geometry
 in a :class:`~netlist_agent.kicad_pcb.Board`: copper of different nets must
 keep ``clearance`` mm of edge-to-edge distance, and every track must be at
-least ``min_track_width`` mm wide.
+least ``min_track_width`` mm wide. Net classes on the board tighten these
+rules: a copper pair must clear the larger of its two nets' class
+clearances, and a segment whose net class sets a trace width must meet it.
+The ``clearance``/``min_track_width`` parameters act as fallback defaults.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from netlist_agent.kicad_pcb import Board, Pad, TrackSegment, Via
+from netlist_agent.kicad_pcb import Board, Pad, TrackSegment, Via, clearance_for_net, width_for_net
 
 VIA_COPPER_RADIUS = 0.4  # assumed copper annulus radius of a via, in mm
 
@@ -114,12 +117,21 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
     def net_name(code: int) -> str:
         return board.nets.get(code) or f"#{code}"
 
-    def add_clearance(dist: float, at: Point, item_a: str, item_b: str, code_a: int, code_b: int) -> None:
+    def required_clearance(code_a: int, code_b: int) -> float:
+        return max(
+            clearance_for_net(board, code_a, default=clearance),
+            clearance_for_net(board, code_b, default=clearance),
+        )
+
+    def check_clearance(dist: float, at: Point, item_a: str, item_b: str, code_a: int, code_b: int) -> None:
+        required = required_clearance(code_a, code_b)
+        if dist >= required:
+            return
         violations.append(
             DrcViolation(
                 kind="clearance",
                 message=(
-                    f"clearance {round(dist, 3)} mm < required {round(clearance, 3)} mm "
+                    f"clearance {round(dist, 3)} mm < required {round(required, 3)} mm "
                     f"between {item_a} (net {net_name(code_a)}) and {item_b} (net {net_name(code_b)})"
                 ),
                 x=at[0],
@@ -140,12 +152,11 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 continue
             center_dist, pa, pb = _closest_points_seg_seg(seg_a, seg_b)
             edge_dist = center_dist - seg_a.width / 2 - seg_b.width / 2
-            if edge_dist < clearance:
-                add_clearance(
-                    edge_dist, _midpoint(pa, pb),
-                    _describe_segment(seg_a), _describe_segment(seg_b),
-                    seg_a.net_code, seg_b.net_code,
-                )
+            check_clearance(
+                edge_dist, _midpoint(pa, pb),
+                _describe_segment(seg_a), _describe_segment(seg_b),
+                seg_a.net_code, seg_b.net_code,
+            )
 
     # 2. pad vs segment (pads carry no layer: check against every segment)
     for pad in pads:
@@ -154,12 +165,11 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 continue
             qx, qy = _closest_point_on_segment(pad.x, pad.y, seg)
             edge_dist = math.hypot(pad.x - qx, pad.y - qy) - pad.radius - seg.width / 2
-            if edge_dist < clearance:
-                add_clearance(
-                    edge_dist, _midpoint((pad.x, pad.y), (qx, qy)),
-                    _describe_pad(pad), _describe_segment(seg),
-                    pad.net_code, seg.net_code,
-                )
+            check_clearance(
+                edge_dist, _midpoint((pad.x, pad.y), (qx, qy)),
+                _describe_pad(pad), _describe_segment(seg),
+                pad.net_code, seg.net_code,
+            )
 
     # 3. pad vs pad
     for i, pad_a in enumerate(pads):
@@ -168,12 +178,11 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 continue
             center_dist = math.hypot(pad_a.x - pad_b.x, pad_a.y - pad_b.y)
             edge_dist = center_dist - pad_a.radius - pad_b.radius
-            if edge_dist < clearance:
-                add_clearance(
-                    edge_dist, _midpoint((pad_a.x, pad_a.y), (pad_b.x, pad_b.y)),
-                    _describe_pad(pad_a), _describe_pad(pad_b),
-                    pad_a.net_code, pad_b.net_code,
-                )
+            check_clearance(
+                edge_dist, _midpoint((pad_a.x, pad_a.y), (pad_b.x, pad_b.y)),
+                _describe_pad(pad_a), _describe_pad(pad_b),
+                pad_a.net_code, pad_b.net_code,
+            )
 
     # 4. via vs segment / pad / via (vias span all layers)
     for i, via in enumerate(vias):
@@ -182,43 +191,41 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 continue
             qx, qy = _closest_point_on_segment(via.x, via.y, seg)
             edge_dist = math.hypot(via.x - qx, via.y - qy) - VIA_COPPER_RADIUS - seg.width / 2
-            if edge_dist < clearance:
-                add_clearance(
-                    edge_dist, _midpoint((via.x, via.y), (qx, qy)),
-                    _describe_via(via), _describe_segment(seg),
-                    via.net_code, seg.net_code,
-                )
+            check_clearance(
+                edge_dist, _midpoint((via.x, via.y), (qx, qy)),
+                _describe_via(via), _describe_segment(seg),
+                via.net_code, seg.net_code,
+            )
         for pad in pads:
             if via.net_code == pad.net_code:
                 continue
             center_dist = math.hypot(via.x - pad.x, via.y - pad.y)
             edge_dist = center_dist - VIA_COPPER_RADIUS - pad.radius
-            if edge_dist < clearance:
-                add_clearance(
-                    edge_dist, _midpoint((via.x, via.y), (pad.x, pad.y)),
-                    _describe_via(via), _describe_pad(pad),
-                    via.net_code, pad.net_code,
-                )
+            check_clearance(
+                edge_dist, _midpoint((via.x, via.y), (pad.x, pad.y)),
+                _describe_via(via), _describe_pad(pad),
+                via.net_code, pad.net_code,
+            )
         for via_b in vias[i + 1 :]:
             if via.net_code == via_b.net_code:
                 continue
             center_dist = math.hypot(via.x - via_b.x, via.y - via_b.y)
             edge_dist = center_dist - 2 * VIA_COPPER_RADIUS
-            if edge_dist < clearance:
-                add_clearance(
-                    edge_dist, _midpoint((via.x, via.y), (via_b.x, via_b.y)),
-                    _describe_via(via), _describe_via(via_b),
-                    via.net_code, via_b.net_code,
-                )
+            check_clearance(
+                edge_dist, _midpoint((via.x, via.y), (via_b.x, via_b.y)),
+                _describe_via(via), _describe_via(via_b),
+                via.net_code, via_b.net_code,
+            )
 
     # 5. track width (width 0 means "unspecified" in some files: skip)
     for seg in segments:
-        if 0 < seg.width < min_track_width:
+        required_width = max(min_track_width, width_for_net(board, seg.net_code, default=min_track_width))
+        if 0 < seg.width < required_width:
             violations.append(
                 DrcViolation(
                     kind="track_width",
                     message=(
-                        f"track width {round(seg.width, 3)} mm < minimum {round(min_track_width, 3)} mm "
+                        f"track width {round(seg.width, 3)} mm < minimum {round(required_width, 3)} mm "
                         f"for {_describe_segment(seg)} (net {net_name(seg.net_code)})"
                     ),
                     x=(seg.x1 + seg.x2) / 2,
