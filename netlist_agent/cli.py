@@ -499,6 +499,14 @@ def _run_batch(args: argparse.Namespace) -> None:
         print(f"Index -> {args.markdown}")
 
 
+def _run_dsn(args: argparse.Namespace) -> None:
+    from .dsn import write_dsn
+
+    board = _load_board(args.board)
+    write_dsn(board, args.output, name=args.board.stem)
+    print(f"Specctra DSN -> {args.output}")
+
+
 def _run_gerber(args: argparse.Namespace) -> None:
     from .gerber import export_gerbers
 
@@ -554,6 +562,8 @@ def main() -> None:
         _run_gerber(args)
     elif args.command == "export":
         _run_export(args)
+    elif args.command == "dsn":
+        _run_dsn(args)
 
 
 if __name__ == "__main__":
