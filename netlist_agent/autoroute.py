@@ -1,4 +1,4 @@
-"""Grid autorouter v2: turn ratsnest airwires into tracks on one or two layers.
+"""Grid autorouter v2: turn ratsnest airwires into tracks on one or more layers.
 
 Algorithm, per airwire (nets iterated in report order):
 
@@ -8,15 +8,16 @@ Algorithm, per airwire (nets iterated in report order):
    ``clearance + width/2`` past their radius, segments by their half-width
    plus the same inflation, vias by their pad radius plus the same inflation.
    Obstacle sets are per layer: segments block only their own layer (in
-   two-layer mode; single-layer mode keeps the v1 behavior of blocking
+   multi-layer mode; single-layer mode keeps the v1 behavior of blocking
    regardless of layer), while pads and vias conservatively block every
    layer. Obstacle sets are computed lazily per net and cached, so a board
    with few airwires never rasterizes every net.
 3. A* from the cell nearest one airwire end to the cell nearest the other,
    over (col, row, layer): 8-directional planar movement, diagonal cost
-   sqrt(2), octile-distance heuristic on x/y (layer ignored). In two-layer
-   mode a layer-switch move costing ``via_cost`` is also allowed, but only
-   when the cell is free on BOTH layers — the via goes through the board.
+   sqrt(2), octile-distance heuristic on x/y (layer ignored). In multi-layer
+   mode a layer-switch move costing ``via_cost`` to any other layer is also
+   allowed, but only when the cell is free on ALL layers — vias are
+   through-hole in this model and pass through the whole board.
    Start and goal cells are always traversable (they sit on same-net pads)
    and both live on the first layer.
 4. Collapse each same-layer run of the path into collinear segments; a layer
@@ -75,6 +76,9 @@ class RouteResult:
     routed: list[Airwire]
     failed: list[Airwire]
     vias: list[Via] = field(default_factory=list)
+    # Routing stack the result was produced on; write_routed_board spans its
+    # vias from the first to the last layer of this stack.
+    layer_stack: tuple[str, ...] = ("F.Cu", "B.Cu")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -104,7 +108,7 @@ class _Router:
     width: float
     layers: tuple[str, ...]
     via_cost: float = 5.0
-    # Per-layer segment blocking (two-layer mode); False keeps the v1 rule
+    # Per-layer segment blocking (multi-layer mode); False keeps the v1 rule
     # that existing segments block regardless of their layer.
     per_layer: bool = False
     net_widths: dict[int, float] | None = None
@@ -290,11 +294,11 @@ class _Router:
                 if cell in blocked[li] and cell != goal and cell != start:
                     continue
                 push((nc, nr, li), g + cost, current)
-            # Layer switch: a via needs the cell free on BOTH layers.
+            # Layer switch: a through-hole via needs the cell free on ALL layers.
             cell = (col, row)
-            if cell not in blocked[li]:
+            if all(cell not in layer_cells for layer_cells in blocked):
                 for lj in range(len(self.layers)):
-                    if lj != li and cell not in blocked[lj]:
+                    if lj != li:
                         push((col, row, lj), g + self.via_cost, current)
         return None
 
@@ -359,7 +363,7 @@ def route_board(
     clearance: float = 0.2,
     layer: str = "F.Cu",
     width: float = 0.25,
-    layers: tuple[str, str] | None = None,
+    layers: tuple[str, ...] | None = None,
     via_cost: float = 5.0,
     net_widths: dict[int, float] | None = None,
     rip_up_retries: int = 2,
@@ -367,10 +371,14 @@ def route_board(
     """Route every airwire in ``report``.
 
     With ``layers`` unset, route on the single copper layer ``layer``. With
-    ``layers`` set (e.g. ``("F.Cu", "B.Cu")``), route across both layers,
-    inserting vias where the path switches layers. ``net_widths`` overrides
-    the track width per net_code; ``rip_up_retries`` bounds how many blocking
-    airwires a failed airwire may rip up and reroute.
+    ``layers`` set to one or more copper layers (e.g. ``("F.Cu", "In1.Cu",
+    "B.Cu")``), route across all of them, inserting vias where the path
+    switches layers; a one-element tuple behaves like single-layer mode but
+    with per-layer blocking. Vias are through-hole in this model: switching
+    layers requires (and afterwards blocks) the cell on ALL layers of the
+    stack. ``net_widths`` overrides the track width per net_code;
+    ``rip_up_retries`` bounds how many blocking airwires a failed airwire may
+    rip up and reroute.
     """
     router = _Router(
         board=board,
@@ -435,7 +443,9 @@ def route_board(
         else:
             failed.append(airwire)
 
-    result = RouteResult(segments=[], routed=[], failed=failed, vias=[])
+    result = RouteResult(
+        segments=[], routed=[], failed=failed, vias=[], layer_stack=router.layers
+    )
     for owner in order:
         airwire, segments, vias = placed[owner]
         result.routed.append(airwire)
@@ -459,7 +469,7 @@ def write_routed_board(source: Path, result: RouteResult, output: Path) -> None:
         for s in result.segments
     ) + "".join(
         f"  (via (at {_fmt(v.x)} {_fmt(v.y)}) (size {_fmt(_VIA_SIZE)}) (drill {_fmt(_VIA_DRILL)})"
-        f' (layers "F.Cu" "B.Cu") (net {v.net_code}))\n'
+        f' (layers "{result.layer_stack[0]}" "{result.layer_stack[-1]}") (net {v.net_code}))\n'
         for v in result.vias
     )
     if close > 0 and text[close - 1] != "\n":
