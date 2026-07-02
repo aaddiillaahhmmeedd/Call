@@ -50,17 +50,52 @@ def build_parser() -> argparse.ArgumentParser:
 
     route = sub.add_parser(
         "route",
-        help="Autoroute the board's airwires on a grid (single layer, v1).",
+        help="Autoroute the board's airwires on a grid (single or two layer).",
     )
     route.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
     route.add_argument("--grid", type=float, default=0.25, help="Routing grid in mm")
     route.add_argument("--clearance", type=float, default=0.2, help="Copper clearance in mm")
-    route.add_argument("--layer", default="F.Cu", help="Layer for new tracks")
+    route.add_argument("--layer", default="F.Cu", help="Layer for new tracks (single-layer mode)")
+    route.add_argument(
+        "--two-layer",
+        action="store_true",
+        help="Route on F.Cu + B.Cu with via insertion",
+    )
     route.add_argument("--width", type=float, default=0.25, help="Track width in mm")
     route.add_argument("--output", type=Path, default=None, help="Write routed .kicad_pcb copy")
     route.add_argument("--svg", type=Path, default=None, help="Render routed board as SVG")
 
+    drc = sub.add_parser(
+        "drc",
+        help="Check copper clearance and track-width rules on a board.",
+    )
+    drc.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    drc.add_argument("--clearance", type=float, default=0.15, help="Minimum copper clearance in mm")
+    drc.add_argument("--min-width", type=float, default=0.15, help="Minimum track width in mm")
+    drc.add_argument("--json", type=Path, default=None, help="Write violations as JSON")
+    drc.add_argument("--strict", action="store_true", help="Exit with status 2 if violations found")
+
+    report = sub.add_parser(
+        "report",
+        help="One-shot HTML report: ratsnest + DRC (+ ERC when a netlist is given).",
+    )
+    report.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    report.add_argument("--netlist", type=Path, default=None, help="Schematic netlist for ERC")
+    report.add_argument("--clearance", type=float, default=0.15, help="DRC clearance in mm")
+    report.add_argument("--min-width", type=float, default=0.15, help="DRC minimum track width in mm")
+    report.add_argument(
+        "-o", "--output", type=Path, default=Path("output/report.html"), help="Output HTML file"
+    )
+
     return parser
+
+
+def _load_board(path: Path):
+    if path.suffix.lower() == ".brd":
+        from .eagle_brd import parse_eagle_board
+
+        return parse_eagle_board(path)
+    return parse_board(path)
 
 
 def _run_netlist(args: argparse.Namespace) -> None:
@@ -71,7 +106,7 @@ def _run_netlist(args: argparse.Namespace) -> None:
 
 
 def _run_ratsnest(args: argparse.Namespace) -> None:
-    board = parse_board(args.board)
+    board = _load_board(args.board)
     report = compute_ratsnest(board)
     summary = report.to_dict()
 
@@ -100,7 +135,7 @@ def _run_erc(args: argparse.Namespace) -> None:
     schematic = extract_from_file("local", args.netlist)
     if schematic is None:
         raise SystemExit(f"{args.netlist}: could not parse a netlist from this file")
-    board = parse_board(args.board)
+    board = _load_board(args.board)
     issues = compare(schematic, board)
 
     if not issues:
@@ -121,7 +156,7 @@ def _run_erc(args: argparse.Namespace) -> None:
 def _run_route(args: argparse.Namespace) -> None:
     from .autoroute import route_board, write_routed_board
 
-    board = parse_board(args.board)
+    board = _load_board(args.board)
     report = compute_ratsnest(board)
     result = route_board(
         board,
@@ -130,6 +165,7 @@ def _run_route(args: argparse.Namespace) -> None:
         clearance=args.clearance,
         layer=args.layer,
         width=args.width,
+        layers=("F.Cu", "B.Cu") if args.two_layer else None,
     )
     total_len = sum(s.length for s in result.segments)
     print(
@@ -148,6 +184,63 @@ def _run_route(args: argparse.Namespace) -> None:
         print(f"Routed SVG -> {args.svg}")
 
 
+def _run_drc(args: argparse.Namespace) -> None:
+    from .drc import check_board
+
+    board = _load_board(args.board)
+    violations = check_board(board, clearance=args.clearance, min_track_width=args.min_width)
+
+    if not violations:
+        print(f"{args.board.name}: DRC clean at {args.clearance} mm clearance")
+    for v in violations:
+        print(f"  [{v.kind}] {v.message}")
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(
+            json.dumps([v.to_dict() for v in violations], indent=2), encoding="utf-8"
+        )
+        print(f"Violations -> {args.json}")
+    if violations and args.strict:
+        raise SystemExit(2)
+
+
+def _run_report(args: argparse.Namespace) -> None:
+    import tempfile
+
+    from .drc import check_board
+    from .report import render_report, write_report
+
+    board = _load_board(args.board)
+    ratsnest = compute_ratsnest(board)
+    violations = check_board(board, clearance=args.clearance, min_track_width=args.min_width)
+
+    erc_issues: list[dict] = []
+    if args.netlist:
+        from .erc import compare
+        from .pcb_extractors import extract_from_file
+
+        schematic = extract_from_file("local", args.netlist)
+        if schematic is None:
+            raise SystemExit(f"{args.netlist}: could not parse a netlist from this file")
+        erc_issues = [i.to_dict() for i in compare(schematic, board)]
+
+    with tempfile.TemporaryDirectory(prefix="netlist-agent-") as tmp:
+        svg_path = Path(tmp) / "board.svg"
+        render_svg(board, ratsnest, svg_path)
+        svg = svg_path.read_text(encoding="utf-8")
+
+    html = render_report(
+        title=args.board.name,
+        ratsnest=ratsnest.to_dict(),
+        erc_issues=erc_issues,
+        drc_violations=[v.to_dict() for v in violations],
+        svg=svg,
+    )
+    write_report(args.output, html)
+    print(f"Report -> {args.output}")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "netlist":
@@ -158,6 +251,10 @@ def main() -> None:
         _run_erc(args)
     elif args.command == "route":
         _run_route(args)
+    elif args.command == "drc":
+        _run_drc(args)
+    elif args.command == "report":
+        _run_report(args)
 
 
 if __name__ == "__main__":

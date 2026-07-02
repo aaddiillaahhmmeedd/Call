@@ -1,24 +1,29 @@
 # Call
 
-## PCB agents: netlisting, ratsnesting, ERC, autorouting
+## PCB agents: netlisting, ratsnesting, ERC, DRC, autorouting, reporting
 
-This repository contains four cooperating PCB bots under one CLI:
+This repository contains six cooperating PCB bots under one CLI. Boards can
+be KiCad (`.kicad_pcb`) or Eagle 6+ XML (`.brd`) — both parse into the same
+board model.
 
 1. **Netlist agent** — searches GitHub for PCB/PCBA projects, clones each
    candidate shallowly, and extracts components + nets from:
    - KiCad XML netlists (`.net`, `.xml`)
    - BOM CSV files (`bom.csv`, `ibom.csv`, `components.csv`)
-2. **Ratsnest agent** — parses a local KiCad board (`.kicad_pcb`), clusters
-   copper (pads, tracks, vias, filled zones) per net with union-find, and
-   emits the minimum-spanning-tree airwires between unconnected clusters —
-   the same shape a PCB editor draws as its ratsnest. Reports routing
-   completion and renders an SVG.
+2. **Ratsnest agent** — clusters copper (pads, tracks, vias, filled zones)
+   per net with union-find and emits the minimum-spanning-tree airwires
+   between unconnected clusters — the same shape a PCB editor draws as its
+   ratsnest. Reports routing completion and renders an SVG.
 3. **ERC bot** — diffs a schematic netlist against the board's pad
    connectivity: missing/extra components and net-membership mismatches.
    `--strict` makes it CI-friendly (exit code 2 on issues).
-4. **Autoroute agent** — v1 single-layer grid autorouter: A* over the board
-   bounding box with clearance-inflated obstacles, converts airwires into
-   track segments and can write a routed `.kicad_pcb` copy.
+4. **DRC bot** — copper clearance (segment/pad/via pairs across nets) and
+   minimum track-width checks. Also `--strict`-gated for CI.
+5. **Autoroute agent** — grid autorouter: A* over the board bounding box
+   with clearance-inflated obstacles; `--two-layer` routes F.Cu + B.Cu with
+   via insertion. Writes a routed board copy.
+6. **Report bot** — one-shot standalone HTML report combining ratsnest,
+   DRC, optional ERC, and the board SVG.
 
 ## Quick start
 
@@ -28,8 +33,20 @@ python -m pip install -e .
 # Netlisting: mine GitHub for PCB designs
 netlist-agent netlist "kicad power supply" --limit 3 --output output/netlists.json
 
-# Ratsnesting: analyze a local board
+# Ratsnesting: analyze a local board (KiCad or Eagle)
 netlist-agent ratsnest path/to/board.kicad_pcb --json output/ratsnest.json --svg output/ratsnest.svg
+
+# ERC: schematic netlist vs board connectivity (exit 2 on issues with --strict)
+netlist-agent erc path/to/schematic.net path/to/board.kicad_pcb --strict
+
+# DRC: clearance + track width rules
+netlist-agent drc path/to/board.kicad_pcb --clearance 0.15 --strict
+
+# Autoroute the remaining airwires (two-layer with vias)
+netlist-agent route path/to/board.kicad_pcb --two-layer --output output/routed.kicad_pcb
+
+# Everything at once as a standalone HTML report
+netlist-agent report path/to/board.kicad_pcb --netlist path/to/schematic.net -o output/report.html
 ```
 
 Optional authentication for higher GitHub API limits:
