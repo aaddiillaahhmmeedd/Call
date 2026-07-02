@@ -55,12 +55,21 @@ class Zone:
 
 
 @dataclass(slots=True)
+class NetClass:
+    name: str
+    clearance: float | None = None
+    trace_width: float | None = None
+    nets: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class Board:
     nets: dict[int, str] = field(default_factory=dict)
     pads: list[Pad] = field(default_factory=list)
     segments: list[TrackSegment] = field(default_factory=list)
     vias: list[Via] = field(default_factory=list)
     zones: list[Zone] = field(default_factory=list)
+    net_classes: dict[str, NetClass] = field(default_factory=dict)
 
 
 def tokenize(text: str) -> list[str]:
@@ -201,6 +210,66 @@ def _parse_zone(zone: SExpr) -> Zone:
     )
 
 
+def _parse_net_class(expr: SExpr) -> NetClass:
+    # (net_class "Power" "description" (clearance 0.3) (trace_width 0.5) (add_net "VCC") ...)
+    # The name is the first string atom after the tag; the optional description
+    # (second string atom) is skipped.
+    atoms = [item for item in expr[1:] if isinstance(item, str)]
+    clearance_expr = _child(expr, "clearance")
+    trace_width_expr = _child(expr, "trace_width")
+    return NetClass(
+        name=atoms[0] if atoms else "?",
+        clearance=_floats(clearance_expr, 1)[0] if clearance_expr else None,
+        trace_width=_floats(trace_width_expr, 1)[0] if trace_width_expr else None,
+        nets=[str(add[1]) for add in _children(expr, "add_net") if len(add) > 1],
+    )
+
+
+def _plain_net_name(name: str) -> str:
+    return name[1:] if name.startswith("/") else name
+
+
+def net_class_for(board: Board, net_code: int) -> NetClass | None:
+    """Net class whose member list contains the net's name, or None.
+
+    Names are compared with a leading "/" stripped on both sides; an explicit
+    (non-"Default") class wins over the "Default" class.
+    """
+    net_name = _plain_net_name(board.nets.get(net_code, ""))
+    if not net_name:
+        return None
+    default: NetClass | None = None
+    for net_class in board.net_classes.values():
+        if any(_plain_net_name(member) == net_name for member in net_class.nets):
+            if net_class.name == "Default":
+                default = net_class
+            else:
+                return net_class
+    return default
+
+
+def width_for_net(board: Board, net_code: int, default: float = 0.25) -> float:
+    """Trace width for the net: its class, else the "Default" class, else ``default``."""
+    net_class = net_class_for(board, net_code)
+    if net_class is not None and net_class.trace_width is not None:
+        return net_class.trace_width
+    fallback = board.net_classes.get("Default")
+    if fallback is not None and fallback.trace_width is not None:
+        return fallback.trace_width
+    return default
+
+
+def clearance_for_net(board: Board, net_code: int, default: float = 0.15) -> float:
+    """Clearance for the net: its class, else the "Default" class, else ``default``."""
+    net_class = net_class_for(board, net_code)
+    if net_class is not None and net_class.clearance is not None:
+        return net_class.clearance
+    fallback = board.net_classes.get("Default")
+    if fallback is not None and fallback.clearance is not None:
+        return fallback.clearance
+    return default
+
+
 def parse_board(path: Path | str) -> Board:
     text = Path(path).read_text(encoding="utf-8", errors="ignore")
     root = parse_sexpr(text)
@@ -250,5 +319,9 @@ def parse_board(path: Path | str) -> Board:
 
     for zone in _children(root, "zone"):
         board.zones.append(_parse_zone(zone))
+
+    for net_class_expr in _children(root, "net_class"):
+        net_class = _parse_net_class(net_class_expr)
+        board.net_classes[net_class.name] = net_class
 
     return board
