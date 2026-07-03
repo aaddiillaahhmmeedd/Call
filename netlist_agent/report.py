@@ -6,8 +6,8 @@ assets. With JavaScript enabled, clicking a net row highlights that net on
 the board SVG, the board panel supports wheel zoom + drag pan, the net
 search box filters the net table, and per-layer toggle buttons show/hide
 the board's layers; without it the page reads as a plain static report. All data values are escaped
-with html.escape; the ``svg`` argument is the one trusted input — it is
-markup this package rendered itself.
+with html.escape; the ``svg`` and ``assembly_svg`` arguments are the trusted
+inputs — they are markup this package rendered itself.
 """
 
 from __future__ import annotations
@@ -95,6 +95,14 @@ tr.net-row.selected td { background: rgba(64, 140, 255, 0.16); }
   cursor: pointer;
 }
 .layer-toggle.off { opacity: 0.45; text-decoration: line-through; }
+""".strip()
+
+# Styling for the static assembly drawing panel. Kept out of _CSS and only
+# emitted when an assembly SVG is present so reports without one are
+# byte-identical to before. The panel deliberately does not use .svg-panel:
+# that class is wired to the zoom/pan/net-highlight script.
+_ASSEMBLY_CSS = """
+.assembly-panel svg { display: block; max-width: 100%; height: auto; border-radius: 6px; }
 """.strip()
 
 # Net highlighting (click a net row), net search, layer visibility toggles,
@@ -271,6 +279,8 @@ def render_report(
     erc_issues: list[dict[str, Any]],
     drc_violations: list[dict[str, Any]],
     svg: str | None = None,
+    *,
+    assembly_svg: str | None = None,
 ) -> str:
     """Render a fully self-contained HTML report page (no external assets)."""
     completion = float(ratsnest.get("completion_pct", 0.0))
@@ -295,6 +305,14 @@ def render_report(
     svg_panel = (
         f'<section class="card svg-panel"><h2>Board</h2>{controls}{svg}</section>' if svg else ""
     )
+    # Static print-style drawing: no controls, no script hookup (the class is
+    # assembly-panel, not svg-panel, so the interactive script ignores it).
+    assembly_panel = (
+        f'<section class="card assembly-panel"><h2>Assembly</h2>{assembly_svg}</section>\n'
+        if assembly_svg
+        else ""
+    )
+    css = f"{_CSS}\n{_ASSEMBLY_CSS}" if assembly_svg else _CSS
 
     nets: list[dict[str, Any]] = ratsnest.get("nets", [])
     nets_table = (
@@ -311,12 +329,12 @@ def render_report(
         "<!DOCTYPE html>\n"
         '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"<title>{_esc(title)}</title>\n<style>\n{_CSS}\n</style>\n</head>\n<body>\n"
+        f"<title>{_esc(title)}</title>\n<style>\n{css}\n</style>\n</head>\n<body>\n"
         '<div class="wrap">\n'
         f"<header><h1>{_esc(title)}</h1>"
         f'<p class="generated">Generated on {_esc(generated)}</p></header>\n'
         f'<div class="tiles">{tiles}</div>\n'
-        f"{svg_panel}\n"
+        f"{svg_panel}\n{assembly_panel}"
         f"{nets_table}\n"
         f"{_issue_section('ERC issues', erc_issues, with_location=False)}\n"
         f"{_issue_section('DRC violations', drc_violations, with_location=True)}\n"
