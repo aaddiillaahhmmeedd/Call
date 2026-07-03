@@ -104,6 +104,9 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument(
         "-o", "--output", type=Path, default=Path("output/report.html"), help="Output HTML file"
     )
+    report.add_argument(
+        "--assembly", action="store_true", help="Include an assembly-drawing panel"
+    )
 
     summary = sub.add_parser(
         "summary",
@@ -256,6 +259,16 @@ def build_parser() -> argparse.ArgumentParser:
     assembly.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
     assembly.add_argument(
         "-o", "--output", type=Path, default=Path("output/assembly.svg"), help="Output SVG"
+    )
+
+    silk = sub.add_parser(
+        "silk",
+        help="Export a silkscreen Gerber with stroke-font reference designators.",
+    )
+    silk.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    silk.add_argument("--height", type=float, default=1.0, help="Text height in mm")
+    silk.add_argument(
+        "-o", "--output", type=Path, default=Path("output/board-F_SilkS.gbr"), help="Output Gerber"
     )
 
     return parser
@@ -425,12 +438,19 @@ def _run_report(args: argparse.Namespace) -> None:
         render_svg(board, ratsnest, svg_path)
         svg = svg_path.read_text(encoding="utf-8")
 
+    assembly_svg = None
+    if getattr(args, "assembly", False):
+        from .fab import render_assembly_svg
+
+        assembly_svg = render_assembly_svg(board)
+
     html = render_report(
         title=args.board.name,
         ratsnest=ratsnest.to_dict(),
         erc_issues=erc_issues,
         drc_violations=[v.to_dict() for v in violations],
         svg=svg,
+        assembly_svg=assembly_svg,
     )
     write_report(args.output, html)
     print(f"Report -> {args.output}")
@@ -676,6 +696,14 @@ def _run_teardrops(args: argparse.Namespace) -> None:
         print(f"Teardropped board -> {args.output}")
 
 
+def _run_silk(args: argparse.Namespace) -> None:
+    from .silkscreen import write_silkscreen
+
+    board = _load_board(args.board)
+    write_silkscreen(board, args.output, text_height=args.height)
+    print(f"Silkscreen Gerber -> {args.output}")
+
+
 def _run_panel(args: argparse.Namespace) -> None:
     from .panel import PanelSpec, panelize
 
@@ -741,6 +769,8 @@ def main() -> None:
         _run_panel(args)
     elif args.command == "assembly":
         _run_assembly(args)
+    elif args.command == "silk":
+        _run_silk(args)
 
 
 if __name__ == "__main__":
