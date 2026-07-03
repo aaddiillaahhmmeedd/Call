@@ -79,6 +79,10 @@ class RouteResult:
     # Routing stack the result was produced on; write_routed_board spans its
     # vias from the first to the last layer of this stack.
     layer_stack: tuple[str, ...] = ("F.Cu", "B.Cu")
+    # Per-via (from_layer, to_layer) spans, parallel to ``vias``; blind/buried
+    # vias span adjacent layers, through vias the whole stack. Entries missing
+    # here (hand-built results) fall back to the stack's first/last layer.
+    via_layer_spans: list[tuple[str, str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -112,6 +116,7 @@ class _Router:
     # that existing segments block regardless of their layer.
     per_layer: bool = False
     net_widths: dict[int, float] | None = None
+    via_span: str = "through"  # "through" | "blind" (adjacent-layer hops)
     # Track width of the net currently being routed; drives clearance inflation.
     active_width: float = 0.0
     min_x: float = 0.0
@@ -121,10 +126,13 @@ class _Router:
     _layer_index: dict[str, int] = field(default_factory=dict)
     # Static obstacles per routed net (one cell set per layer), rasterized on first use.
     _static_blocked: dict[int, list[set[Cell]]] = field(default_factory=dict)
-    # (owner, net_code, layer_index, cells) for copper created during this run;
-    # layer_index is _ALL_LAYERS for vias, which pass through the whole board.
-    # The owner tag lets rip-up remove one airwire's copper.
-    _dynamic_blocked: list[tuple[int, int, int, set[Cell]]] = field(default_factory=list)
+    # (owner, net_code, layer_spec, cells) for copper created during this run;
+    # layer_spec is an int layer index for segments, _ALL_LAYERS for through
+    # vias, or a frozenset of indices for blind/buried vias. The owner tag
+    # lets rip-up remove one airwire's copper.
+    _dynamic_blocked: list[tuple[int, int, int | frozenset[int], set[Cell]]] = field(
+        default_factory=list
+    )
 
     def __post_init__(self) -> None:
         self.active_width = self.width
@@ -223,14 +231,17 @@ class _Router:
 
     def _blocked_for(self, net_code: int) -> list[set[Cell]]:
         blocked = [set(cells) for cells in self._static_for(net_code)]
-        for _owner, other_net, layer_idx, cells in self._dynamic_blocked:
+        for _owner, other_net, layer_spec, cells in self._dynamic_blocked:
             if other_net == net_code:
                 continue
-            if layer_idx == _ALL_LAYERS:
+            if layer_spec == _ALL_LAYERS:
                 for layer_cells in blocked:
                     layer_cells |= cells
+            elif isinstance(layer_spec, frozenset):
+                for idx in layer_spec:
+                    blocked[idx] |= cells
             else:
-                blocked[layer_idx] |= cells
+                blocked[layer_spec] |= cells
         return blocked
 
     def add_segment(self, seg: TrackSegment, owner: int) -> None:
@@ -238,9 +249,12 @@ class _Router:
             (owner, seg.net_code, self._layer_index[seg.layer], self._segment_cells(seg))
         )
 
-    def add_via(self, via: Via, owner: int) -> None:
+    def add_via(self, via: Via, owner: int, span: frozenset[int] | None = None) -> None:
+        # A through via (span None) blocks every layer; a blind/buried via
+        # blocks only the layers it actually spans.
+        layer_spec: int | frozenset[int] = _ALL_LAYERS if span is None else span
         self._dynamic_blocked.append(
-            (owner, via.net_code, _ALL_LAYERS, self._via_cells(via.x, via.y))
+            (owner, via.net_code, layer_spec, self._via_cells(via.x, via.y))
         )
 
     def remove_owner(self, owner: int) -> None:
@@ -294,9 +308,19 @@ class _Router:
                 if cell in blocked[li] and cell != goal and cell != start:
                     continue
                 push((nc, nr, li), g + cost, current)
-            # Layer switch: a through-hole via needs the cell free on ALL layers.
             cell = (col, row)
-            if all(cell not in layer_cells for layer_cells in blocked):
+            if self.via_span == "blind":
+                # Blind/buried via: adjacent-layer hop, only those two layers
+                # need to be free.
+                for lj in (li - 1, li + 1):
+                    if (
+                        0 <= lj < len(self.layers)
+                        and cell not in blocked[li]
+                        and cell not in blocked[lj]
+                    ):
+                        push((col, row, lj), g + self.via_cost, current)
+            elif all(cell not in layer_cells for layer_cells in blocked):
+                # Through-hole via: needs the cell free on ALL layers.
                 for lj in range(len(self.layers)):
                     if lj != li:
                         push((col, row, lj), g + self.via_cost, current)
@@ -326,16 +350,25 @@ class _Router:
             )
         return segments
 
-    def path_to_routes(self, path: list[Node], net_code: int) -> tuple[list[TrackSegment], list[Via]]:
-        """Split the node path into per-layer runs; each layer change emits a via."""
+    def path_to_routes(
+        self, path: list[Node], net_code: int
+    ) -> tuple[list[TrackSegment], list[tuple[Via, tuple[int, int]]]]:
+        """Split the node path into per-layer runs; each layer change emits a via.
+
+        Vias are returned with the (from, to) layer indices they switch
+        between; through mode spans the whole stack regardless.
+        """
         segments: list[TrackSegment] = []
-        vias: list[Via] = []
+        vias: list[tuple[Via, tuple[int, int]]] = []
         run: list[Cell] = [path[0][:2]]
         layer_idx = path[0][2]
         for node in path[1:]:
             if node[2] != layer_idx:
                 x, y = self.point(node[:2])
-                vias.append(Via(x=x, y=y, net_code=net_code))
+                span = (min(layer_idx, node[2]), max(layer_idx, node[2]))
+                if self.via_span != "blind":
+                    span = (0, len(self.layers) - 1)
+                vias.append((Via(x=x, y=y, net_code=net_code), span))
                 segments.extend(self._run_segments(run, layer_idx, net_code))
                 run = [node[:2]]
                 layer_idx = node[2]
@@ -367,6 +400,7 @@ def route_board(
     via_cost: float = 5.0,
     net_widths: dict[int, float] | None = None,
     rip_up_retries: int = 2,
+    via_span: str = "through",
 ) -> RouteResult:
     """Route every airwire in ``report``.
 
@@ -374,9 +408,11 @@ def route_board(
     ``layers`` set to one or more copper layers (e.g. ``("F.Cu", "In1.Cu",
     "B.Cu")``), route across all of them, inserting vias where the path
     switches layers; a one-element tuple behaves like single-layer mode but
-    with per-layer blocking. Vias are through-hole in this model: switching
-    layers requires (and afterwards blocks) the cell on ALL layers of the
-    stack. ``net_widths`` overrides the track width per net_code;
+    with per-layer blocking. ``via_span="through"`` (default) makes every
+    via span the full stack: switching layers requires (and afterwards
+    blocks) the cell on ALL layers. ``via_span="blind"`` allows blind/buried
+    vias: adjacent-layer hops that need — and later block — only the two
+    layers they span. ``net_widths`` overrides the track width per net_code;
     ``rip_up_retries`` bounds how many blocking airwires a failed airwire may
     rip up and reroute.
     """
@@ -389,6 +425,7 @@ def route_board(
         via_cost=via_cost,
         per_layer=layers is not None,
         net_widths=net_widths,
+        via_span=via_span,
     )
 
     airwires = [a for net in report.nets for a in net.airwires]
@@ -422,12 +459,13 @@ def route_board(
         path = router.astar(start, goal, router._blocked_for(airwire.net_code))
 
         if path is not None:
-            segments, vias = router.path_to_routes(path, airwire.net_code)
+            segments, via_entries = router.path_to_routes(path, airwire.net_code)
             for segment in segments:
                 router.add_segment(segment, next_owner)
-            for via in vias:
-                router.add_via(via, next_owner)
-            placed[next_owner] = (airwire, segments, vias)
+            for via, (la, lb) in via_entries:
+                span = frozenset(range(la, lb + 1)) if via_span == "blind" else None
+                router.add_via(via, next_owner, span)
+            placed[next_owner] = (airwire, segments, via_entries)
             order.append(next_owner)
             next_owner += 1
             continue
@@ -447,10 +485,12 @@ def route_board(
         segments=[], routed=[], failed=failed, vias=[], layer_stack=router.layers
     )
     for owner in order:
-        airwire, segments, vias = placed[owner]
+        airwire, segments, via_entries = placed[owner]
         result.routed.append(airwire)
         result.segments.extend(segments)
-        result.vias.extend(vias)
+        for via, (la, lb) in via_entries:
+            result.vias.append(via)
+            result.via_layer_spans.append((router.layers[la], router.layers[lb]))
     return result
 
 
@@ -469,8 +509,13 @@ def write_routed_board(source: Path, result: RouteResult, output: Path) -> None:
         for s in result.segments
     ) + "".join(
         f"  (via (at {_fmt(v.x)} {_fmt(v.y)}) (size {_fmt(_VIA_SIZE)}) (drill {_fmt(_VIA_DRILL)})"
-        f' (layers "{result.layer_stack[0]}" "{result.layer_stack[-1]}") (net {v.net_code}))\n'
-        for v in result.vias
+        f' (layers "{span[0]}" "{span[1]}") (net {v.net_code}))\n'
+        for v, span in zip(
+            result.vias,
+            list(result.via_layer_spans)
+            + [(result.layer_stack[0], result.layer_stack[-1])]
+            * max(0, len(result.vias) - len(result.via_layer_spans)),
+        )
     )
     if close > 0 and text[close - 1] != "\n":
         lines = "\n" + lines
