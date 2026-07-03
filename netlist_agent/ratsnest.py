@@ -2,9 +2,10 @@
 
 Algorithm, per net:
 
-1. Collect connection items: pads, track-segment endpoints, vias, and zones.
-2. Cluster them with union-find — a segment joins its two endpoints, a
-   pad absorbs any endpoint/via that lands within its hit radius, and a
+1. Collect connection items: pads, track-segment and arc endpoints, vias,
+   and zones.
+2. Cluster them with union-find — a segment or arc joins its two endpoints,
+   a pad absorbs any endpoint/via that lands within its hit radius, and a
    zone absorbs any item point inside one of its filled polygons.
 3. Every pair of clusters still separated needs copper: emit the minimum
    spanning tree over clusters (Prim's), using the closest item pair between
@@ -153,9 +154,10 @@ def compute_ratsnest(board: Board) -> RatsnestReport:
 def _compute_net(board: Board, net_code: int, net_name: str) -> NetReport | None:
     pads = [p for p in board.pads if p.net_code == net_code]
     segments = [s for s in board.segments if s.net_code == net_code]
+    arcs = [a for a in board.arcs if a.net_code == net_code]
     vias = [v for v in board.vias if v.net_code == net_code]
     zones = [z for z in board.zones if z.net_code == net_code and z.polygons]
-    if not pads and not segments:
+    if not pads and not segments and not arcs:
         return None
 
     # Item list: pads first, then one junction item per distinct copper point.
@@ -170,6 +172,7 @@ def _compute_net(board: Board, net_code: int, net_name: str) -> NetReport | None
         return junction_index[key]
 
     segment_ends = [(junction(s.x1, s.y1), junction(s.x2, s.y2)) for s in segments]
+    segment_ends += [(junction(a.x1, a.y1), junction(a.x2, a.y2)) for a in arcs]
     for v in vias:
         junction(v.x, v.y)
 
@@ -202,7 +205,7 @@ def _compute_net(board: Board, net_code: int, net_name: str) -> NetReport | None
         net_name=net_name,
         pad_count=len(pads),
         cluster_count=len(cluster_list),
-        routed_length=sum(s.length for s in segments),
+        routed_length=sum(s.length for s in segments) + sum(a.length for a in arcs),
         airwires=airwires,
     )
 
