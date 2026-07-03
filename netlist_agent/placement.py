@@ -22,7 +22,31 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .kicad_pcb import Board, _footprint_reference, outline_bbox, parse_board, parse_sexpr
+from .kicad_pcb import (
+    Board,
+    Footprint,
+    _footprint_reference,
+    outline_bbox,
+    parse_board,
+    parse_sexpr,
+)
+
+
+def courtyard_extents(footprint: Footprint) -> tuple[float, float] | None:
+    """Board-frame half-extents of the footprint's courtyard, or None.
+
+    The local courtyard rectangle is rotated by the footprint angle and
+    re-boxed: |w cos| + |h sin| per axis.
+    """
+    if footprint.courtyard_half_w is None or footprint.courtyard_half_h is None:
+        return None
+    theta = math.radians(footprint.rotation)
+    w, h = footprint.courtyard_half_w, footprint.courtyard_half_h
+    return (
+        abs(w * math.cos(theta)) + abs(h * math.sin(theta)),
+        abs(w * math.sin(theta)) + abs(h * math.cos(theta)),
+    )
+
 
 _GRID = 0.05  # placement grid in mm
 _OVERLAP_WEIGHT = 100.0  # per mm^2 of courtyard overlap / outline excursion
@@ -105,19 +129,31 @@ def _build_components(
     comps: list[_Component] = []
     positions: list[tuple[float, float]] = []
     net_pads: dict[int, list[tuple[int, float, float]]] = {}
+    footprints = {fp.reference: fp for fp in board.footprints}
     for reference in sorted(by_ref):
         pads = by_ref[reference]
         cx = sum(p.x for p in pads) / len(pads)
         cy = sum(p.y for p in pads) / len(pads)
         offsets = [(p.x - cx, p.y - cy) for p in pads]
         pad_radius = max(p.radius for p in pads)
+        # Real courtyard extents win over pad-derived ones; the courtyard is
+        # measured from the footprint origin, close enough to the pad
+        # centroid for rectangle purposes.
+        courtyard = None
+        if reference in footprints:
+            courtyard = courtyard_extents(footprints[reference])
+        if courtyard is not None:
+            half_w, half_h = courtyard[0] + spacing, courtyard[1] + spacing
+        else:
+            half_w = max(abs(dx) for dx, _ in offsets) + pad_radius + spacing
+            half_h = max(abs(dy) for _, dy in offsets) + pad_radius + spacing
         index = len(comps)
         comps.append(
             _Component(
                 reference=reference,
                 offsets=offsets,
-                half_w=max(abs(dx) for dx, _ in offsets) + pad_radius + spacing,
-                half_h=max(abs(dy) for _, dy in offsets) + pad_radius + spacing,
+                half_w=half_w,
+                half_h=half_h,
                 movable=any(p.net_code != 0 for p in pads),
             )
         )
