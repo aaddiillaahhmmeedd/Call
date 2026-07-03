@@ -110,6 +110,49 @@ def _describe_via(via: Via) -> str:
     return f"via ({via.x:g}, {via.y:g})"
 
 
+_Item = tuple[str, int]  # ("s"|"p"|"v", index)
+
+
+def _candidate_pairs(board: Board, max_clear: float) -> set[tuple[_Item, _Item]]:
+    """Conservative spatial prefilter: pairs that could possibly violate.
+
+    Every item is inserted into a uniform grid over its bounding box inflated
+    by its copper radius plus half the largest possible clearance; two shapes
+    whose edge gap is under any required clearance necessarily share a cell,
+    so testing only co-located pairs preserves the exact result set.
+    """
+    pad = max((p.radius for p in board.pads), default=0.0)
+    seg = max((s.width / 2 for s in board.segments), default=0.0)
+    cell = max(1.0, 2 * max(pad, seg, VIA_COPPER_RADIUS) + max_clear)
+
+    grid: dict[tuple[int, int], list[_Item]] = {}
+
+    def insert(item: _Item, x1: float, y1: float, x2: float, y2: float, reach: float) -> None:
+        pad_out = reach + max_clear / 2
+        c_lo = int((min(x1, x2) - pad_out) // cell)
+        c_hi = int((max(x1, x2) + pad_out) // cell)
+        r_lo = int((min(y1, y2) - pad_out) // cell)
+        r_hi = int((max(y1, y2) + pad_out) // cell)
+        for c in range(c_lo, c_hi + 1):
+            for r in range(r_lo, r_hi + 1):
+                grid.setdefault((c, r), []).append(item)
+
+    for i, s in enumerate(board.segments):
+        insert(("s", i), s.x1, s.y1, s.x2, s.y2, s.width / 2)
+    for i, p in enumerate(board.pads):
+        insert(("p", i), p.x, p.y, p.x, p.y, p.radius)
+    for i, v in enumerate(board.vias):
+        insert(("v", i), v.x, v.y, v.x, v.y, VIA_COPPER_RADIUS)
+
+    pairs: set[tuple[_Item, _Item]] = set()
+    for items in grid.values():
+        for a in range(len(items)):
+            for b in range(a + 1, len(items)):
+                pair = (items[a], items[b]) if items[a] <= items[b] else (items[b], items[a])
+                pairs.add(pair)
+    return pairs
+
+
 def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 0.15) -> list[DrcViolation]:
     """Run clearance and track-width checks; return violations sorted by (kind, x, y)."""
     violations: list[DrcViolation] = []
@@ -145,35 +188,16 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
     pads = board.pads
     vias = board.vias
 
-    # 1. segment vs segment (same layer only)
-    for i, seg_a in enumerate(segments):
-        for seg_b in segments[i + 1 :]:
-            if seg_a.net_code == seg_b.net_code or seg_a.layer != seg_b.layer:
-                continue
-            center_dist, pa, pb = _closest_points_seg_seg(seg_a, seg_b)
-            edge_dist = center_dist - seg_a.width / 2 - seg_b.width / 2
-            check_clearance(
-                edge_dist, _midpoint(pa, pb),
-                _describe_segment(seg_a), _describe_segment(seg_b),
-                seg_a.net_code, seg_b.net_code,
-            )
+    max_clear = max(
+        [clearance]
+        + [nc.clearance for nc in board.net_classes.values() if nc.clearance is not None]
+    )
 
-    # 2. pad vs segment (pads carry no layer: check against every segment)
-    for pad in pads:
-        for seg in segments:
-            if pad.net_code == seg.net_code:
-                continue
-            qx, qy = _closest_point_on_segment(pad.x, pad.y, seg)
-            edge_dist = math.hypot(pad.x - qx, pad.y - qy) - pad.radius - seg.width / 2
-            check_clearance(
-                edge_dist, _midpoint((pad.x, pad.y), (qx, qy)),
-                _describe_pad(pad), _describe_segment(seg),
-                pad.net_code, seg.net_code,
-            )
-
-    # 3. pad vs pad
-    for i, pad_a in enumerate(pads):
-        for pad_b in pads[i + 1 :]:
+    # Clearance checks over spatially co-located pairs only; the prefilter is
+    # conservative, so the violation set matches the full pairwise sweep.
+    for (kind_a, i), (kind_b, j) in sorted(_candidate_pairs(board, max_clear)):
+        if kind_a == "p" and kind_b == "p":
+            pad_a, pad_b = pads[i], pads[j]
             if pad_a.net_code == pad_b.net_code:
                 continue
             center_dist = math.hypot(pad_a.x - pad_b.x, pad_a.y - pad_b.y)
@@ -183,10 +207,30 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 _describe_pad(pad_a), _describe_pad(pad_b),
                 pad_a.net_code, pad_b.net_code,
             )
-
-    # 4. via vs segment / pad / via (vias span all layers)
-    for i, via in enumerate(vias):
-        for seg in segments:
+        elif kind_a == "p" and kind_b == "s":
+            pad, seg = pads[i], segments[j]
+            if pad.net_code == seg.net_code:
+                continue
+            qx, qy = _closest_point_on_segment(pad.x, pad.y, seg)
+            edge_dist = math.hypot(pad.x - qx, pad.y - qy) - pad.radius - seg.width / 2
+            check_clearance(
+                edge_dist, _midpoint((pad.x, pad.y), (qx, qy)),
+                _describe_pad(pad), _describe_segment(seg),
+                pad.net_code, seg.net_code,
+            )
+        elif kind_a == "s" and kind_b == "s":
+            seg_a, seg_b = segments[i], segments[j]
+            if seg_a.net_code == seg_b.net_code or seg_a.layer != seg_b.layer:
+                continue
+            center_dist, pa, pb = _closest_points_seg_seg(seg_a, seg_b)
+            edge_dist = center_dist - seg_a.width / 2 - seg_b.width / 2
+            check_clearance(
+                edge_dist, _midpoint(pa, pb),
+                _describe_segment(seg_a), _describe_segment(seg_b),
+                seg_a.net_code, seg_b.net_code,
+            )
+        elif kind_a == "s" and kind_b == "v":
+            seg, via = segments[i], vias[j]
             if via.net_code == seg.net_code:
                 continue
             qx, qy = _closest_point_on_segment(via.x, via.y, seg)
@@ -196,7 +240,8 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 _describe_via(via), _describe_segment(seg),
                 via.net_code, seg.net_code,
             )
-        for pad in pads:
+        elif kind_a == "p" and kind_b == "v":
+            pad, via = pads[i], vias[j]
             if via.net_code == pad.net_code:
                 continue
             center_dist = math.hypot(via.x - pad.x, via.y - pad.y)
@@ -206,7 +251,8 @@ def check_board(board: Board, clearance: float = 0.15, min_track_width: float = 
                 _describe_via(via), _describe_pad(pad),
                 via.net_code, pad.net_code,
             )
-        for via_b in vias[i + 1 :]:
+        elif kind_a == "v" and kind_b == "v":
+            via, via_b = vias[i], vias[j]
             if via.net_code == via_b.net_code:
                 continue
             center_dist = math.hypot(via.x - via_b.x, via.y - via_b.y)
