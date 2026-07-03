@@ -9,6 +9,7 @@ layer visibility. Titles are escaped too — net names come from board files.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from xml.sax.saxutils import escape, quoteattr
 
@@ -42,6 +43,9 @@ def render_svg(board: Board, report: RatsnestReport, output_file: Path, scale: f
     for s in board.segments:
         xs.extend((s.x1, s.x2))
         ys.extend((s.y1, s.y2))
+    for a in board.arcs:
+        xs.extend((a.x1, a.xm, a.x2))
+        ys.extend((a.y1, a.ym, a.y2))
     for v in board.vias:
         xs.append(v.x)
         ys.append(v.y)
@@ -85,6 +89,31 @@ def render_svg(board: Board, report: RatsnestReport, output_file: Path, scale: f
             f'<line x1="{sx(s.x1)}" y1="{sy(s.y1)}" x2="{sx(s.x2)}" y2="{sy(s.y2)}" '
             f'stroke="{color}" stroke-width="{max(s.width, 0.15) * scale:.2f}" stroke-linecap="round"'
             f"{_net_attr(board.nets.get(s.net_code, ''))}{_layer_attr(s.layer)}/>"
+        )
+
+    for a in board.arcs:
+        color = _LAYER_COLORS.get(a.layer, _DEFAULT_TRACK_COLOR)
+        stroke = (
+            f'stroke="{color}" stroke-width="{max(a.width, 0.15) * scale:.2f}" '
+            f'stroke-linecap="round" fill="none"'
+            f"{_net_attr(board.nets.get(a.net_code, ''))}{_layer_attr(a.layer)}"
+        )
+        center = a._center()
+        if center is None:  # collinear: draw the chord
+            parts.append(
+                f'<line x1="{sx(a.x1)}" y1="{sy(a.y1)}" x2="{sx(a.x2)}" y2="{sy(a.y2)}" {stroke}/>'
+            )
+            continue
+        cx, cy = center
+        ccw_end = (math.atan2(a.y2 - cy, a.x2 - cx) - math.atan2(a.y1 - cy, a.x1 - cx)) % math.tau
+        ccw_mid = (math.atan2(a.ym - cy, a.xm - cx) - math.atan2(a.y1 - cy, a.x1 - cx)) % math.tau
+        sweep = 1 if ccw_mid <= ccw_end else 0
+        angle = ccw_end if sweep else math.tau - ccw_end
+        large = 1 if angle > math.pi else 0
+        r = a.radius * scale
+        parts.append(
+            f'<path d="M {sx(a.x1)} {sy(a.y1)} A {r:.2f} {r:.2f} 0 {large} {sweep} '
+            f'{sx(a.x2)} {sy(a.y2)}" {stroke}/>'
         )
 
     for v in board.vias:

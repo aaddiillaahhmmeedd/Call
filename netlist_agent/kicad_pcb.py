@@ -48,6 +48,57 @@ class Via:
 
 
 @dataclass(slots=True)
+class ArcTrack:
+    x1: float
+    y1: float
+    xm: float
+    ym: float
+    x2: float
+    y2: float
+    width: float
+    layer: str
+    net_code: int
+
+    def _center(self) -> tuple[float, float] | None:
+        d = 2 * (
+            self.x1 * (self.ym - self.y2)
+            + self.xm * (self.y2 - self.y1)
+            + self.x2 * (self.y1 - self.ym)
+        )
+        if abs(d) < 1e-9:
+            return None  # collinear points: no circumcircle
+        sq1 = self.x1 * self.x1 + self.y1 * self.y1
+        sqm = self.xm * self.xm + self.ym * self.ym
+        sq2 = self.x2 * self.x2 + self.y2 * self.y2
+        ux = (sq1 * (self.ym - self.y2) + sqm * (self.y2 - self.y1) + sq2 * (self.y1 - self.ym)) / d
+        uy = (sq1 * (self.x2 - self.xm) + sqm * (self.x1 - self.x2) + sq2 * (self.xm - self.x1)) / d
+        return ux, uy
+
+    @property
+    def radius(self) -> float:
+        center = self._center()
+        if center is None:
+            return math.inf
+        return math.hypot(self.x1 - center[0], self.y1 - center[1])
+
+    @property
+    def length(self) -> float:
+        center = self._center()
+        if center is None:  # degenerate: chord path through the mid point
+            return math.hypot(self.xm - self.x1, self.ym - self.y1) + math.hypot(
+                self.x2 - self.xm, self.y2 - self.ym
+            )
+        cx, cy = center
+        theta_start = math.atan2(self.y1 - cy, self.x1 - cx)
+        theta_mid = math.atan2(self.ym - cy, self.xm - cx)
+        theta_end = math.atan2(self.y2 - cy, self.x2 - cx)
+        ccw_end = (theta_end - theta_start) % math.tau
+        ccw_mid = (theta_mid - theta_start) % math.tau
+        angle = ccw_end if ccw_mid <= ccw_end else math.tau - ccw_end
+        return self.radius * angle
+
+
+@dataclass(slots=True)
 class Zone:
     net_code: int
     layer: str
@@ -82,6 +133,7 @@ class Board:
     net_classes: dict[str, NetClass] = field(default_factory=dict)
     edge_segments: list[TrackSegment] = field(default_factory=list)  # board outline on Edge.Cuts
     footprints: list[Footprint] = field(default_factory=list)
+    arcs: list[ArcTrack] = field(default_factory=list)
 
 
 def tokenize(text: str) -> list[str]:
@@ -353,6 +405,27 @@ def parse_board(path: Path | str) -> Board:
             TrackSegment(
                 x1=x1,
                 y1=y1,
+                x2=x2,
+                y2=y2,
+                width=width,
+                layer=str(layer_expr[1]) if layer_expr and len(layer_expr) > 1 else "",
+                net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0,
+            )
+        )
+
+    for arc in _children(root, "arc"):
+        x1, y1 = _floats(_child(arc, "start"), 2)
+        xm, ym = _floats(_child(arc, "mid"), 2)
+        x2, y2 = _floats(_child(arc, "end"), 2)
+        (width,) = _floats(_child(arc, "width"), 1)
+        layer_expr = _child(arc, "layer")
+        net_expr = _child(arc, "net")
+        board.arcs.append(
+            ArcTrack(
+                x1=x1,
+                y1=y1,
+                xm=xm,
+                ym=ym,
                 x2=x2,
                 y2=y2,
                 width=width,
