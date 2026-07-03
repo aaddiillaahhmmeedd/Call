@@ -236,6 +236,28 @@ def build_parser() -> argparse.ArgumentParser:
     teardrops.add_argument("--width", type=float, default=0.9, help="Base half-width as pad-radius ratio")
     teardrops.add_argument("--output", type=Path, default=None, help="Write teardropped board copy")
 
+    panel = sub.add_parser(
+        "panel",
+        help="Panelize a board N x M with spacing and frame rails.",
+    )
+    panel.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
+    panel.add_argument("--rows", type=int, default=2, help="Panel rows")
+    panel.add_argument("--cols", type=int, default=2, help="Panel columns")
+    panel.add_argument("--gap", type=float, default=3.0, help="Gap between copies in mm")
+    panel.add_argument("--rail", type=float, default=5.0, help="Frame rail height in mm (0 = none)")
+    panel.add_argument(
+        "-o", "--output", type=Path, default=Path("output/panel.kicad_pcb"), help="Output board"
+    )
+
+    assembly = sub.add_parser(
+        "assembly",
+        help="Render an assembly drawing (courtyards, references, pin-1 marks) as SVG.",
+    )
+    assembly.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    assembly.add_argument(
+        "-o", "--output", type=Path, default=Path("output/assembly.svg"), help="Output SVG"
+    )
+
     return parser
 
 
@@ -654,6 +676,29 @@ def _run_teardrops(args: argparse.Namespace) -> None:
         print(f"Teardropped board -> {args.output}")
 
 
+def _run_panel(args: argparse.Namespace) -> None:
+    from .panel import PanelSpec, panelize
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    stats = panelize(
+        args.board,
+        PanelSpec(rows=args.rows, cols=args.cols, gap_mm=args.gap, rail_mm=args.rail),
+        args.output,
+    )
+    print(
+        f"{args.board.name}: {stats['copies']} copies at pitch "
+        f"{stats['pitch_mm'][0]:g} x {stats['pitch_mm'][1]:g} mm -> {args.output}"
+    )
+
+
+def _run_assembly(args: argparse.Namespace) -> None:
+    from .fab import write_assembly_svg
+
+    board = _load_board(args.board)
+    write_assembly_svg(board, args.output)
+    print(f"Assembly drawing -> {args.output}")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "netlist":
@@ -692,6 +737,10 @@ def main() -> None:
         _run_impedance(args)
     elif args.command == "teardrops":
         _run_teardrops(args)
+    elif args.command == "panel":
+        _run_panel(args)
+    elif args.command == "assembly":
+        _run_assembly(args)
 
 
 if __name__ == "__main__":

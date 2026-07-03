@@ -102,7 +102,21 @@ netlist-agent batch path/to/projects --json output/boards.json
 # Fabrication outputs
 netlist-agent gerber path/to/board.kicad_pcb -o output/gerbers
 netlist-agent export path/to/board.kicad_pcb --netlist output/board.net --bom output/bom.csv
+
+# External autorouter round-trip (freerouting)
+netlist-agent dsn path/to/board.kicad_pcb -o output/board.dsn
+netlist-agent ses path/to/board.kicad_pcb output/board.ses -o output/routed.kicad_pcb
+
+# Signal integrity and manufacturing extras
+netlist-agent impedance path/to/board.kicad_pcb --target 50
+netlist-agent teardrops path/to/board.kicad_pcb --output output/teardropped.kicad_pcb
+netlist-agent panel path/to/board.kicad_pcb --rows 2 --cols 3 -o output/panel.kicad_pcb
+netlist-agent assembly path/to/board.kicad_pcb -o output/assembly.svg
+netlist-agent audit path/to/board.kicad_pcb --strict
 ```
+
+A KiCad Action Plugin wrapping the report pipeline lives in
+`plugins/kicad/` — install instructions in its README.
 
 Optional authentication for higher GitHub API limits:
 
