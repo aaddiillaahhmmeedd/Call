@@ -121,6 +121,10 @@ class Footprint:
     x: float = 0.0
     y: float = 0.0
     rotation: float = 0.0
+    # Courtyard half-extents in the footprint's local (unrotated) frame,
+    # from fp_rect/fp_poly/fp_line shapes on *.CrtYd layers; None without one.
+    courtyard_half_w: float | None = None
+    courtyard_half_h: float | None = None
 
 
 @dataclass(slots=True)
@@ -235,6 +239,26 @@ def _footprint_value(fp: SExpr) -> str | None:
         if len(text) >= 3 and text[1] == "value":
             return str(text[2])
     return None
+
+
+def _is_courtyard(shape: SExpr) -> bool:
+    layer = _child(shape, "layer")
+    return layer is not None and len(layer) > 1 and str(layer[1]).endswith(".CrtYd")
+
+
+def _courtyard_extents(fp: SExpr) -> tuple[float, float] | None:
+    points: list[tuple[float, float]] = []
+    for tag in ("fp_rect", "fp_line"):
+        for shape in _children(fp, tag):
+            if _is_courtyard(shape):
+                points.append(tuple(_floats(_child(shape, "start"), 2)))
+                points.append(tuple(_floats(_child(shape, "end"), 2)))
+    for shape in _children(fp, "fp_poly"):
+        if _is_courtyard(shape):
+            points.extend(_polygon_points(shape))
+    if not points:
+        return None
+    return max(abs(x) for x, _ in points), max(abs(y) for _, y in points)
 
 
 def _parse_pad(pad: SExpr, fp_x: float, fp_y: float, fp_rot: float, reference: str, nets: dict[int, str]) -> Pad | None:
@@ -380,6 +404,7 @@ def parse_board(path: Path | str) -> Board:
             fp_x, fp_y, fp_rot = _floats(_child(fp, "at"), 3)
             reference = _footprint_reference(fp)
             name = next((item for item in fp[1:] if isinstance(item, str)), "?")
+            courtyard = _courtyard_extents(fp)
             board.footprints.append(
                 Footprint(
                     reference=reference,
@@ -388,6 +413,8 @@ def parse_board(path: Path | str) -> Board:
                     x=fp_x,
                     y=fp_y,
                     rotation=fp_rot,
+                    courtyard_half_w=courtyard[0] if courtyard else None,
+                    courtyard_half_h=courtyard[1] if courtyard else None,
                 )
             )
             for pad_expr in _children(fp, "pad"):

@@ -173,3 +173,49 @@ def test_write_placed_board(tmp_path: Path) -> None:
         dy = 3.0 if pad.reference == "R1" else 0.0
         assert pad.x == pytest.approx(original.x + dx)
         assert pad.y == pytest.approx(original.y + dy)
+
+
+def test_courtyard_parsing_and_extents(tmp_path: Path) -> None:
+    from netlist_agent.placement import courtyard_extents
+
+    source = tmp_path / "courtyard.kicad_pcb"
+    source.write_text(
+        '(kicad_pcb (version 20221018) (generator test)\n'
+        '  (net 0 "")\n'
+        '  (net 1 "N")\n'
+        '  (footprint "test:BIG" (at 100 100)\n'
+        '    (property "Reference" "U1")\n'
+        '    (fp_rect (start -2 -1) (end 2 1) (layer "F.CrtYd") (stroke (width 0.05)))\n'
+        '    (pad "1" smd rect (at 0 0) (size 0.8 0.8) (net 1 "N")))\n'
+        '  (footprint "test:POLY" (at 110 100 90)\n'
+        '    (property "Reference" "U2")\n'
+        '    (fp_poly (pts (xy -3 -0.5) (xy 3 -0.5) (xy 3 0.5) (xy -3 0.5)) (layer "F.CrtYd"))\n'
+        '    (pad "1" smd rect (at 0 0) (size 0.8 0.8) (net 1 "N")))\n'
+        '  (footprint "test:LINES" (at 120 100)\n'
+        '    (property "Reference" "U3")\n'
+        '    (fp_line (start -1.5 -0.75) (end 1.5 0.75) (layer "B.CrtYd"))\n'
+        '    (fp_line (start -1 -1) (end 1 1) (layer "F.SilkS"))\n'
+        '    (pad "1" smd rect (at 0 0) (size 0.8 0.8) (net 1 "N")))\n'
+        '  (footprint "test:NONE" (at 130 100)\n'
+        '    (property "Reference" "U4")\n'
+        '    (pad "1" smd rect (at 0 0) (size 0.8 0.8) (net 1 "N")))\n'
+        ')\n',
+        encoding="utf-8",
+    )
+    board = parse_board(source)
+    by_ref = {fp.reference: fp for fp in board.footprints}
+
+    assert (by_ref["U1"].courtyard_half_w, by_ref["U1"].courtyard_half_h) == (2.0, 1.0)
+    assert (by_ref["U2"].courtyard_half_w, by_ref["U2"].courtyard_half_h) == (3.0, 0.5)
+    assert (by_ref["U3"].courtyard_half_w, by_ref["U3"].courtyard_half_h) == (1.5, 0.75)
+    assert by_ref["U4"].courtyard_half_w is None
+
+    # Rotation 90 swaps the extents in board frame.
+    assert courtyard_extents(by_ref["U1"]) == (pytest.approx(2.0), pytest.approx(1.0))
+    ext = courtyard_extents(by_ref["U2"])
+    assert ext == (pytest.approx(0.5, abs=1e-9), pytest.approx(3.0, abs=1e-9))
+    assert courtyard_extents(by_ref["U4"]) is None
+
+    # Placement respects courtyard sizes: run and check no courtyard overlap.
+    result = optimize_placement(board, iterations=1500, seed=3, spacing=0.5)
+    assert set(result.positions) == {"U1", "U2", "U3", "U4"}
