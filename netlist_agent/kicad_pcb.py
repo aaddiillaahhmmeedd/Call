@@ -174,6 +174,8 @@ def tokenize(text: str) -> list[str]:
 
 def parse_sexpr(text: str) -> SExpr:
     tokens = tokenize(text)
+    if not tokens:
+        raise ValueError("not an s-expression document")
     pos = 0
 
     def read() -> Any:
@@ -220,6 +222,16 @@ def _floats(expr: SExpr | None, count: int) -> list[float]:
     return values
 
 
+
+def _int_atom(expr: SExpr | None, index: int = 1, default: int = 0) -> int:
+    """Integer atom at ``expr[index]``, tolerating malformed documents."""
+    if expr is None or len(expr) <= index or not isinstance(expr[index], str):
+        return default
+    try:
+        return int(float(expr[index]))
+    except ValueError:
+        return default
+
 def _footprint_reference(fp: SExpr) -> str:
     # KiCad 7+: (property "Reference" "R1" ...); older: (fp_text reference R1 ...)
     for prop in _children(fp, "property"):
@@ -265,7 +277,7 @@ def _parse_pad(pad: SExpr, fp_x: float, fp_y: float, fp_rot: float, reference: s
     net = _child(pad, "net")
     if net is None or len(net) < 2:
         return None  # unconnected pad: not part of any ratsnest
-    net_code = int(float(net[1]))
+    net_code = _int_atom(net)
     px, py = _floats(_child(pad, "at"), 2)
     sx, sy = _floats(_child(pad, "size"), 2)
     theta = math.radians(fp_rot)
@@ -302,7 +314,7 @@ def _parse_zone(zone: SExpr) -> Zone:
         if outline is not None and (pts := _polygon_points(outline)):
             polygons.append(pts)
     return Zone(
-        net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0,
+        net_code=_int_atom(net_expr),
         layer=str(layer_expr[1]) if layer_expr and len(layer_expr) > 1 else "",
         polygons=polygons,
     )
@@ -389,14 +401,14 @@ def clearance_for_net(board: Board, net_code: int, default: float = 0.15) -> flo
 def parse_board(path: Path | str) -> Board:
     text = Path(path).read_text(encoding="utf-8", errors="ignore")
     root = parse_sexpr(text)
-    if not root or root[0] not in {"kicad_pcb", "pcbnew"}:
+    if not root or not isinstance(root[0], str) or root[0] not in {"kicad_pcb", "pcbnew"}:
         raise ValueError(f"{path}: not a KiCad board file")
 
     board = Board()
 
     for net in _children(root, "net"):
         if len(net) >= 2:
-            code = int(float(net[1]))
+            code = _int_atom(net)
             board.nets[code] = str(net[2]) if len(net) > 2 else ""
 
     for tag in ("footprint", "module"):
@@ -436,7 +448,7 @@ def parse_board(path: Path | str) -> Board:
                 y2=y2,
                 width=width,
                 layer=str(layer_expr[1]) if layer_expr and len(layer_expr) > 1 else "",
-                net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0,
+                net_code=_int_atom(net_expr),
             )
         )
 
@@ -457,7 +469,7 @@ def parse_board(path: Path | str) -> Board:
                 y2=y2,
                 width=width,
                 layer=str(layer_expr[1]) if layer_expr and len(layer_expr) > 1 else "",
-                net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0,
+                net_code=_int_atom(net_expr),
             )
         )
 
@@ -465,7 +477,7 @@ def parse_board(path: Path | str) -> Board:
         vx, vy = _floats(_child(via, "at"), 2)
         net_expr = _child(via, "net")
         board.vias.append(
-            Via(x=vx, y=vy, net_code=int(float(net_expr[1])) if net_expr and len(net_expr) > 1 else 0)
+            Via(x=vx, y=vy, net_code=_int_atom(net_expr))
         )
 
     for line in _children(root, "gr_line"):
