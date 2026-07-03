@@ -12,5 +12,8 @@ dependencies = ["requests>=2.31"]
 [project.scripts]
 netlist-agent = "netlist_agent.cli:main"
 
+[tool.setuptools.packages.find]
+include = ["netlist_agent*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
