@@ -407,3 +407,60 @@ def test_net_widths() -> None:
     routed_board = Board(nets=dict(board.nets), pads=list(board.pads), segments=result.segments)
     after = compute_ratsnest(routed_board)
     assert all(n.fully_routed for n in after.nets)
+
+
+def _bcu_sheet_board() -> Board:
+    """F.Cu wall between the pads plus a solid net-2 sheet covering all of B.Cu:
+    a through via has no site where every layer is free, but a blind
+    F.Cu<->In1.Cu hop never touches B.Cu."""
+    # One enormous-width B.Cu segment blankets the whole routing area without
+    # extending the bbox (only endpoints feed the bbox), so no through-via
+    # site exists anywhere; In1.Cu stays free for blind hops.
+    sheet = TrackSegment(x1=95.0, y1=100.0, x2=115.0, y2=100.0, width=60.0, layer="B.Cu", net_code=2)
+    return Board(
+        nets={0: "", 1: "N1", 2: "GND"},
+        pads=[
+            _pad("R1", 100.0, 100.0, 1, "N1"),
+            _pad("R2", 110.0, 100.0, 1, "N1"),
+        ],
+        segments=_wall_segments() + [sheet],
+    )
+
+
+def test_blind_vias_route_where_through_cannot() -> None:
+    board = _bcu_sheet_board()
+    report = compute_ratsnest(board)
+    airwire = next(a for a in report.airwires if a.net_code == 1)
+    stack = ("F.Cu", "In1.Cu", "B.Cu")
+
+    through = route_board(board, report, layers=stack, via_span="through")
+    assert airwire in through.failed
+
+    blind = route_board(board, report, layers=stack, via_span="blind")
+    assert airwire in blind.routed
+    assert len(blind.vias) >= 2
+    assert len(blind.via_layer_spans) == len(blind.vias)
+    assert set(blind.via_layer_spans) == {("F.Cu", "In1.Cu")}  # never dips to B.Cu
+    assert not any(s.layer == "B.Cu" for s in blind.segments if s.net_code == 1)
+
+
+def test_blind_via_spans_written_per_via(tmp_path: Path) -> None:
+    source = tmp_path / "sheet.kicad_pcb"
+    source.write_text(
+        '(kicad_pcb (version 20221018) (net 0 "") (net 1 "N1") (net 2 "GND"))\n',
+        encoding="utf-8",
+    )
+    board = _bcu_sheet_board()
+    report = compute_ratsnest(board)
+    result = route_board(board, report, layers=("F.Cu", "In1.Cu", "B.Cu"), via_span="blind")
+    assert result.vias
+
+    output = tmp_path / "sheet_routed.kicad_pcb"
+    write_routed_board(source, result, output)
+    text = output.read_text(encoding="utf-8")
+    assert text.count('(layers "F.Cu" "In1.Cu")') == len(result.vias)
+
+    parsed = parse_board(output)
+    after = compute_ratsnest(parsed)
+    n1 = next(n for n in after.nets if n.net_code == 1)
+    assert n1.fully_routed
