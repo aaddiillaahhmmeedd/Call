@@ -204,6 +204,38 @@ def build_parser() -> argparse.ArgumentParser:
         "-o", "--output", type=Path, default=Path("output/board.dsn"), help="Output DSN file"
     )
 
+    ses = sub.add_parser(
+        "ses",
+        help="Import a Specctra session (.ses) from an external autorouter into the board.",
+    )
+    ses.add_argument("board", type=Path, help="Path to the .kicad_pcb the DSN was exported from")
+    ses.add_argument("session", type=Path, help="Path to the .ses session file")
+    ses.add_argument(
+        "-o", "--output", type=Path, default=Path("output/routed.kicad_pcb"), help="Output board"
+    )
+
+    impedance = sub.add_parser(
+        "impedance",
+        help="Estimate per-net characteristic impedance (IPC-2141 microstrip).",
+    )
+    impedance.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    impedance.add_argument("--er", type=float, default=4.5, help="Substrate relative permittivity")
+    impedance.add_argument("--height", type=float, default=0.2, help="Dielectric height in mm")
+    impedance.add_argument("--target", type=float, default=None, help="Target impedance in ohms")
+    impedance.add_argument(
+        "--tolerance", type=float, default=10.0, help="Allowed deviation from target in percent"
+    )
+    impedance.add_argument("--json", type=Path, default=None, help="Write report as JSON")
+
+    teardrops = sub.add_parser(
+        "teardrops",
+        help="Add teardrop reinforcement where tracks enter pads.",
+    )
+    teardrops.add_argument("board", type=Path, help="Path to a .kicad_pcb file")
+    teardrops.add_argument("--length", type=float, default=1.0, help="Wedge length as pad-radius ratio")
+    teardrops.add_argument("--width", type=float, default=0.9, help="Base half-width as pad-radius ratio")
+    teardrops.add_argument("--output", type=Path, default=None, help="Write teardropped board copy")
+
     return parser
 
 
@@ -575,6 +607,53 @@ def _run_export(args: argparse.Namespace) -> None:
         print(f"BOM CSV -> {args.bom}")
 
 
+def _run_ses(args: argparse.Namespace) -> None:
+    from .ses import apply_ses
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    routes = apply_ses(args.board, args.session, args.output)
+    print(
+        f"{args.session.name}: imported {len(routes.segments)} segments, "
+        f"{len(routes.vias)} vias -> {args.output}"
+    )
+
+
+def _run_impedance(args: argparse.Namespace) -> None:
+    from .impedance import Stackup, estimate_board, suggest_width
+
+    board = _load_board(args.board)
+    stackup = Stackup(er=args.er, height_mm=args.height)
+    results = estimate_board(board, stackup, target=args.target, tolerance_pct=args.tolerance)
+
+    for net in results:
+        z_parts = ", ".join(f"{w} mm -> {z:.1f} ohm" for w, z in net.z0_ohms.items())
+        marker = ""
+        if args.target is not None:
+            marker = " [ok]" if net.within_tolerance else " [OFF TARGET]"
+        print(f"  {net.net_name}: {z_parts}{marker}")
+    if args.target is not None:
+        width = suggest_width(args.target, stackup)
+        print(f"  suggested width for {args.target:g} ohm: {width:.3f} mm")
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(
+            json.dumps([n.to_dict() for n in results], indent=2), encoding="utf-8"
+        )
+        print(f"Report -> {args.json}")
+
+
+def _run_teardrops(args: argparse.Namespace) -> None:
+    from .teardrop import generate_teardrops, write_teardropped_board
+
+    board = _load_board(args.board)
+    teardrops = generate_teardrops(board, length_ratio=args.length, width_ratio=args.width)
+    print(f"{args.board.name}: {len(teardrops)} teardrops generated")
+    if args.output and teardrops:
+        write_teardropped_board(args.board, teardrops, args.output)
+        print(f"Teardropped board -> {args.output}")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "netlist":
@@ -607,6 +686,12 @@ def main() -> None:
         _run_dsn(args)
     elif args.command == "audit":
         _run_audit(args)
+    elif args.command == "ses":
+        _run_ses(args)
+    elif args.command == "impedance":
+        _run_impedance(args)
+    elif args.command == "teardrops":
+        _run_teardrops(args)
 
 
 if __name__ == "__main__":
