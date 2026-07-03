@@ -8,6 +8,7 @@ from netlist_agent.report import render_report, write_report
 
 _TRICKY_NET = 'N<1>&"x"'
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect fill="#001023"/></svg>'
+_ASSEMBLY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"><circle r="3" fill="#fff"/></svg>'
 
 
 def _ratsnest() -> dict[str, Any]:
@@ -207,6 +208,41 @@ def test_no_svg_omits_controls() -> None:
 
     assert 'id="net-search"' not in out
     assert 'id="layer-toggles"' not in out
+
+
+def test_assembly_svg_renders_heading_and_svg_exactly_once() -> None:
+    out = render_report("t", _ratsnest(), [], [], svg=_SVG, assembly_svg=_ASSEMBLY_SVG)
+
+    assert "<h2>Assembly</h2>" in out
+    assert out.count(_ASSEMBLY_SVG) == 1  # trusted markup embedded as-is
+    assert out.count('class="card assembly-panel"') == 1
+    # Assembly card renders after the Board card.
+    assert out.index("<h2>Board</h2>") < out.index("<h2>Assembly</h2>")
+
+
+def test_assembly_panel_not_targeted_by_interactive_script() -> None:
+    out = render_report("t", _ratsnest(), [], [], svg=_SVG, assembly_svg=_ASSEMBLY_SVG)
+
+    assert out.count("<script>") == 1
+    script = out.split("<script>", 1)[1].split("</script>", 1)[0]
+    assert '".svg-panel svg"' in script  # script binds to the board panel...
+    assert "assembly-panel" not in script  # ...and never to the assembly panel
+
+
+def test_no_assembly_svg_omits_assembly_panel_entirely() -> None:
+    out = render_report("t", _ratsnest(), [], [], svg=_SVG, assembly_svg=None)
+
+    assert "assembly-panel" not in out
+    assert "<h2>Assembly</h2>" not in out
+
+
+def test_assembly_svg_without_board_svg_renders_panel_but_no_script() -> None:
+    out = render_report("t", _ratsnest(), [], [], svg=None, assembly_svg=_ASSEMBLY_SVG)
+
+    assert "<h2>Assembly</h2>" in out
+    assert out.count(_ASSEMBLY_SVG) == 1
+    assert "<script>" not in out  # the script is tied to the interactive board svg
+    assert "<h2>Board</h2>" not in out
 
 
 def test_no_svg_means_no_script() -> None:
