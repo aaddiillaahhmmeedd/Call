@@ -46,8 +46,13 @@ board model.
     `netlist-agent dsn` emits a Specctra DSN for external autorouters.
 
 The router accepts an arbitrary layer stack (`route --layers
-F.Cu,In1.Cu,B.Cu`), and `netlist --analyze` runs the full board pipeline
-(ratsnest + DRC) on every board file inside each mined repository.
+F.Cu,In1.Cu,B.Cu`) with `--blind-vias` for adjacent-layer blind/buried
+vias, and `netlist --analyze` runs the full board pipeline (ratsnest +
+DRC) on every board file inside each mined repository. Arc tracks parse
+and count toward connectivity and routed length. Two more QC surfaces:
+`netlist-agent audit` flags antenna stubs, single-pad nets, duplicate and
+zero-length segments; `batch --html` renders an interactive dashboard of
+every analyzed board.
 
 Pours support `--thermal` (spoke reliefs on same-net pads) and `--smooth`
 (traced outlines instead of rectangles, with automatic rectangle fallback

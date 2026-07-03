@@ -71,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Comma-separated routing layer stack (example: F.Cu,In1.Cu,B.Cu); overrides --two-layer",
     )
+    route.add_argument(
+        "--blind-vias",
+        action="store_true",
+        help="Allow blind/buried vias (adjacent-layer hops) instead of through vias",
+    )
     route.add_argument("--width", type=float, default=0.25, help="Track width in mm")
     route.add_argument(
         "--rip-up", type=int, default=2, help="Rip-up-and-reroute retries per failed airwire"
@@ -160,6 +165,15 @@ def build_parser() -> argparse.ArgumentParser:
     batch.add_argument("--clearance", type=float, default=0.15, help="DRC clearance in mm")
     batch.add_argument("--json", type=Path, default=None, help="Write full results as JSON")
     batch.add_argument("--markdown", type=Path, default=None, help="Write index as markdown")
+    batch.add_argument("--html", type=Path, default=None, help="Write interactive HTML dashboard")
+
+    audit = sub.add_parser(
+        "audit",
+        help="Flag suspicious board issues: antenna tracks, single-pad nets, duplicates.",
+    )
+    audit.add_argument("board", type=Path, help="Path to a .kicad_pcb or Eagle .brd file")
+    audit.add_argument("--json", type=Path, default=None, help="Write findings as JSON")
+    audit.add_argument("--strict", action="store_true", help="Exit with status 2 on findings")
 
     gerber = sub.add_parser(
         "gerber",
@@ -292,6 +306,7 @@ def _run_route(args: argparse.Namespace) -> None:
         layers=stack,
         net_widths=net_widths,
         rip_up_retries=args.rip_up,
+        via_span="blind" if args.blind_vias else "through",
     )
     total_len = sum(s.length for s in result.segments)
     print(
@@ -497,6 +512,32 @@ def _run_batch(args: argparse.Namespace) -> None:
         args.markdown.parent.mkdir(parents=True, exist_ok=True)
         args.markdown.write_text(index_markdown(results), encoding="utf-8")
         print(f"Index -> {args.markdown}")
+    if args.html:
+        from .batch_report import render_batch_report, write_batch_report
+
+        write_batch_report(args.html, render_batch_report(str(args.root), results))
+        print(f"Dashboard -> {args.html}")
+
+
+def _run_audit(args: argparse.Namespace) -> None:
+    from .audit import audit_board
+
+    board = _load_board(args.board)
+    findings = audit_board(board)
+
+    if not findings:
+        print(f"{args.board.name}: audit clean")
+    for finding in findings:
+        print(f"  [{finding.kind}] {finding.message}")
+
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(
+            json.dumps([f.to_dict() for f in findings], indent=2), encoding="utf-8"
+        )
+        print(f"Findings -> {args.json}")
+    if findings and args.strict:
+        raise SystemExit(2)
 
 
 def _run_dsn(args: argparse.Namespace) -> None:
@@ -564,6 +605,8 @@ def main() -> None:
         _run_export(args)
     elif args.command == "dsn":
         _run_dsn(args)
+    elif args.command == "audit":
+        _run_audit(args)
 
 
 if __name__ == "__main__":
