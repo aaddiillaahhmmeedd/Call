@@ -1,8 +1,8 @@
 """The curated lazy public API surface stays resolvable, versioned, and light."""
 
+import re
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -17,10 +17,12 @@ def test_all_names_resolve() -> None:
 
 
 def test_version_matches_pyproject() -> None:
+    # Read the version with a regex so the test runs on 3.10 (no stdlib tomllib).
     assert netlist_agent.__version__ == "0.2.0"
-    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
-    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    assert data["project"]["version"] == netlist_agent.__version__
+    pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject, re.MULTILINE)
+    assert match is not None
+    assert match.group(1) == netlist_agent.__version__
 
 
 def test_unknown_attribute_raises() -> None:
