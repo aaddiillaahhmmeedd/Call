@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlist-agent"
-version = "0.1.0"
-description = "Netlist extraction agent for PCB repositories on GitHub"
+version = "0.2.0"
+description = "PCB toolkit: netlisting, ratsnest, placement, routing, DRC, and fabrication outputs"
 requires-python = ">=3.10"
 dependencies = ["requests>=2.31"]
 
@@ -14,6 +14,9 @@ netlist-agent = "netlist_agent.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["netlist_agent*"]
+
+[tool.setuptools.package-data]
+netlist_agent = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

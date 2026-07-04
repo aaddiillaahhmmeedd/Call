@@ -4,7 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from netlist_agent.gerber import export_drill, export_gerbers, export_layer, export_outline
+from netlist_agent.gerber import (
+    export_drill,
+    export_gerbers,
+    export_layer,
+    export_mask,
+    export_outline,
+    export_paste,
+)
 from netlist_agent.kicad_pcb import ArcTrack, Board, Pad, TrackSegment, Via, Zone
 
 
@@ -90,7 +97,14 @@ def test_export_gerbers_writes_files(tmp_path: Path) -> None:
 
     names = [p.name for p in written]
     assert names == sorted(names)
-    assert set(names) == {"board-F_Cu.gbr", "board-B_Cu.gbr", "board-Edge_Cuts.gbr", "board-drill.drl"}
+    assert set(names) == {
+        "board-F_Cu.gbr",
+        "board-B_Cu.gbr",
+        "board-F_Mask.gbr",
+        "board-F_Paste.gbr",
+        "board-Edge_Cuts.gbr",
+        "board-drill.drl",
+    }
     for path in written:
         assert path.read_text(encoding="utf-8").strip()
 

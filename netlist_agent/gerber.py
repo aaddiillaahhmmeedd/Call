@@ -109,6 +109,84 @@ def export_layer(board: Board, layer: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def export_mask(board: Board, margin: float = 0.05, tent_vias: bool = True) -> str:
+    """Render the solder-mask openings of *board* as an RS-274X Gerber file.
+
+    Each pad is flashed with diameter ``2 * (radius + margin)``. Mask layers
+    are polarity-inverted by convention (drawn features are openings in the
+    mask), so plain dark flashes are correct. Pads carry no side information
+    in this model, so the same file serves both F.Mask and B.Mask. Vias are
+    tented (covered by mask) by default; pass ``tent_vias=False`` to also
+    flash via openings of diameter ``VIA_DIAMETER + 2 * margin``.
+    """
+    pads: list[Pad] = board.pads
+    vias: list[Via] = [] if tent_vias else board.vias
+
+    lines: list[str] = [
+        "%FSLAX46Y46*%",
+        "%MOMM*%",
+        "%LPD*%",
+        "G04 Layer: Mask*",
+    ]
+
+    # One aperture per distinct opening diameter, sorted ascending.
+    code = 10
+    pad_apertures: dict[float, int] = {}
+    for diameter in sorted({2 * (p.radius + margin) for p in pads}):
+        pad_apertures[diameter] = code
+        lines.append(f"%ADD{code}C,{diameter:.3f}*%")
+        code += 1
+    via_aperture: int | None = None
+    if vias:
+        via_aperture = code
+        lines.append(f"%ADD{code}C,{VIA_DIAMETER + 2 * margin:.3f}*%")
+
+    for pad in pads:
+        lines.append(f"D{pad_apertures[2 * (pad.radius + margin)]}*")
+        lines.append(f"{_xy(pad.x, pad.y)}D03*")
+
+    for via in vias:
+        lines.append(f"D{via_aperture}*")
+        lines.append(f"{_xy(via.x, via.y)}D03*")
+
+    lines.append("M02*")
+    return "\n".join(lines) + "\n"
+
+
+def export_paste(board: Board, shrink: float = 0.9) -> str:
+    """Render the solder-paste stencil apertures of *board* as an RS-274X Gerber file.
+
+    Each pad is flashed with diameter ``2 * radius * shrink`` (stencil
+    apertures are shrunk relative to the copper pad). Paste is purely
+    geometric, so pads with ``net_code`` 0 are still included; vias are
+    never included. Pads carry no side information in this model, so the
+    same file serves both F.Paste and B.Paste.
+    """
+    pads: list[Pad] = board.pads
+
+    lines: list[str] = [
+        "%FSLAX46Y46*%",
+        "%MOMM*%",
+        "%LPD*%",
+        "G04 Layer: Paste*",
+    ]
+
+    # One aperture per distinct stencil diameter, sorted ascending.
+    code = 10
+    pad_apertures: dict[float, int] = {}
+    for diameter in sorted({2 * p.radius * shrink for p in pads}):
+        pad_apertures[diameter] = code
+        lines.append(f"%ADD{code}C,{diameter:.3f}*%")
+        code += 1
+
+    for pad in pads:
+        lines.append(f"D{pad_apertures[2 * pad.radius * shrink]}*")
+        lines.append(f"{_xy(pad.x, pad.y)}D03*")
+
+    lines.append("M02*")
+    return "\n".join(lines) + "\n"
+
+
 def export_outline(board: Board) -> str:
     """Render the board outline (Edge.Cuts) of *board* as an RS-274X Gerber file."""
     lines: list[str] = [
@@ -144,7 +222,12 @@ def export_drill(board: Board) -> str:
 def export_gerbers(
     board: Board, output_dir: Path, layers: tuple[str, ...] = ("F.Cu", "B.Cu")
 ) -> list[Path]:
-    """Write Gerber files for *layers* plus the outline and drill files; return sorted paths."""
+    """Write Gerber files for *layers* plus mask, paste, outline and drill files; return sorted paths.
+
+    Pads carry no side information in this model, so a single mask file
+    (``board-F_Mask.gbr``) and a single paste file (``board-F_Paste.gbr``)
+    are written; each serves the back side as well.
+    """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = "board"
@@ -153,6 +236,12 @@ def export_gerbers(
         path = output_dir / f"{stem}-{layer.replace('.', '_')}.gbr"
         path.write_text(export_layer(board, layer), encoding="utf-8")
         written.append(path)
+    mask_path = output_dir / f"{stem}-F_Mask.gbr"
+    mask_path.write_text(export_mask(board), encoding="utf-8")
+    written.append(mask_path)
+    paste_path = output_dir / f"{stem}-F_Paste.gbr"
+    paste_path.write_text(export_paste(board), encoding="utf-8")
+    written.append(paste_path)
     outline_path = output_dir / f"{stem}-Edge_Cuts.gbr"
     outline_path.write_text(export_outline(board), encoding="utf-8")
     written.append(outline_path)
