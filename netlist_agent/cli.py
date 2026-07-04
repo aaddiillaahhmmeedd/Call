@@ -249,6 +249,15 @@ def build_parser() -> argparse.ArgumentParser:
     panel.add_argument("--gap", type=float, default=3.0, help="Gap between copies in mm")
     panel.add_argument("--rail", type=float, default=5.0, help="Frame rail height in mm (0 = none)")
     panel.add_argument(
+        "--tabs",
+        choices=("none", "mouse_bites", "v_cut"),
+        default="none",
+        help="Breakaway features at copy seams",
+    )
+    panel.add_argument("--tab-width", type=float, default=5.0, help="Mouse-bite tab width in mm")
+    panel.add_argument("--bite-drill", type=float, default=0.5, help="Mouse-bite hole diameter in mm")
+    panel.add_argument("--bite-pitch", type=float, default=0.8, help="Mouse-bite hole pitch in mm")
+    panel.add_argument(
         "-o", "--output", type=Path, default=Path("output/panel.kicad_pcb"), help="Output board"
     )
 
@@ -710,7 +719,16 @@ def _run_panel(args: argparse.Namespace) -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     stats = panelize(
         args.board,
-        PanelSpec(rows=args.rows, cols=args.cols, gap_mm=args.gap, rail_mm=args.rail),
+        PanelSpec(
+            rows=args.rows,
+            cols=args.cols,
+            gap_mm=args.gap,
+            rail_mm=args.rail,
+            tabs=args.tabs,
+            tab_width_mm=args.tab_width,
+            bite_drill_mm=args.bite_drill,
+            bite_pitch_mm=args.bite_pitch,
+        ),
         args.output,
     )
     print(

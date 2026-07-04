@@ -39,6 +39,10 @@ _ABSOLUTE_TAGS = {"segment", "arc", "via", "zone", "gr_line", "gr_rect"}
 _FOOTPRINT_TAGS = {"footprint", "module"}
 _FALLBACK_MARGIN = 1.0  # mm added around the copper bbox when there is no outline
 _RAIL_EDGE_WIDTH = 0.1  # mm stroke width of generated rail Edge.Cuts lines
+# V-cut lines are conventionally communicated on a comment/user layer rather
+# than Edge.Cuts, so they don't merge with (and corrupt) the panel outline.
+_VCUT_LAYER = "Cmts.User"
+_TAB_STYLES = {"none", "mouse_bites", "v_cut"}
 
 
 @dataclass(slots=True)
@@ -47,6 +51,10 @@ class PanelSpec:
     cols: int = 2
     gap_mm: float = 3.0            # spacing between copies
     rail_mm: float = 5.0           # frame rails above/below the grid (0 = none)
+    tabs: str = "none"             # "none" | "mouse_bites" | "v_cut"
+    tab_width_mm: float = 5.0      # mouse-bite tab width
+    bite_drill_mm: float = 0.5     # mouse-bite hole diameter
+    bite_pitch_mm: float = 0.8     # hole center spacing
 
 
 def _fmt(value: float) -> str:
