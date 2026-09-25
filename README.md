@@ -1,5 +1,8 @@
 # Call
 
+> Also in this repo: [`connectome/`](connectome/README.md) - brain + spinal cord
+> connectome from public diffusion MRI with explicit input/output neuron pools.
+
 ## PCB agents: netlisting, ratsnesting, ERC, DRC, autorouting, placement, reporting
 
 This repository contains eight cooperating PCB bots under one CLI. Boards can

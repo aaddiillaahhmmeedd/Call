@@ -1,0 +1,88 @@
+{
+  "nodes": 469,
+  "edges": 6828,
+  "roles": {
+    "interneuron_pool": 293,
+    "relay": 14,
+    "input": 65,
+    "output": 97
+  },
+  "edges_by_provenance": {
+    "dti_brain": 5550,
+    "anatomy": 610,
+    "pam50_tract": 668
+  },
+  "n_inputs": 65,
+  "n_outputs": 97,
+  "brain_qc": {
+    "registration_dice": 0.936468607002602,
+    "median_wm_fa": 0.2945841348292093,
+    "regions_present": 111,
+    "regions_total": 111,
+    "missing_regions": [],
+    "voxel_size_mm": [
+      2.0,
+      2.0,
+      2.0
+    ]
+  },
+  "brain_streamlines": 50600,
+  "spinal_dwi": {
+    "n_streamlines": 5408,
+    "mean_length_mm": 43.5,
+    "longitudinal_fraction": 0.993,
+    "mean_fa": 0.75,
+    "median_cord_area_mm2": 78.6,
+    "voxel_size_mm": [
+      0.8958333134651184,
+      0.8958333134651184,
+      5.0
+    ],
+    "cord_voxels": 1458,
+    "n_directions": 30,
+    "b_value": 800.0
+  },
+  "example_paths": {
+    "L5 left touch -> cortex": [
+      [
+        "L5 L DRG",
+        "L5 L dorsal horn",
+        "Thalamus (R)",
+        "Postcentral Gyrus (R)"
+      ],
+      [
+        "L5 L DRG",
+        "Gracile nucleus (L)",
+        "Thalamus (R)",
+        "Postcentral Gyrus (R)"
+      ]
+    ],
+    "Right motor cortex -> C6 left muscle": [
+      [
+        "Precentral Gyrus (R)",
+        "C6 L ventral horn",
+        "C6 L motor output"
+      ]
+    ],
+    "C7 right-arm sensation -> thalamus": [
+      [
+        "C7 R DRG",
+        "C7 R dorsal horn",
+        "Thalamus (L)"
+      ],
+      [
+        "C7 R DRG",
+        "Cuneate nucleus (R)",
+        "Thalamus (L)"
+      ]
+    ],
+    "Retina -> neck muscles (orienting)": [
+      [
+        "CN II retinal ganglion cells",
+        "Superior colliculus (R)",
+        "C2 L ventral horn",
+        "C2 L motor output"
+      ]
+    ]
+  }
+}
