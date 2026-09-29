@@ -94,6 +94,16 @@ def reliability(mats: dict[tuple[str, str], np.ndarray]) -> dict:
             "identification": f"{hits}/{total}"}
 
 
+def normalise(mats: np.ndarray, totals, target: float | None = None) -> tuple[np.ndarray, float]:
+    """Rescale each scan to the same total streamline count (default: the
+    median across scans). Tractography yield differs ~2x between scans of
+    the same protocol, and an absolute ">= N streamlines" rule would
+    otherwise favour the high-yield scans."""
+    totals = np.asarray(totals, float)
+    target = float(np.median(totals)) if target is None else float(target)
+    return mats * (target / totals)[:, None, None], target
+
+
 def run_group(data_dir, subjects=BRAIN_SUBJECTS, sessions=BRAIN_SESSIONS, *,
               min_streamlines=5, min_fraction=0.5, verbose=True) -> dict:
     mats, qcs, ids = {}, {}, None
@@ -104,11 +114,14 @@ def run_group(data_dir, subjects=BRAIN_SUBJECTS, sessions=BRAIN_SESSIONS, *,
         elif scan_ids != ids:
             raise ValueError(f"label table changed between scans (sub-{s} ses-{ses}); clear data/cache")
         mats[(s, ses)], qcs[f"sub-{s}_ses-{ses}"] = m, qc
-    stack = np.stack(list(mats.values()))
+    totals = [qcs[f"sub-{a}_ses-{b}"]["n_streamlines"] for a, b in mats]
+    stack, target = normalise(np.stack(list(mats.values())), totals)
+    mats = dict(zip(mats, stack))
     weights, consist = consensus(stack, min_streamlines, min_fraction)
     per_scan_edges = [int((upper(m) >= min_streamlines).sum()) for m in stack]
     return {"ids": ids, "weights": weights, "consistency": consist, "stack": stack,
             "keys": list(mats), "qc": qcs, "reliability": reliability(mats),
-            "rule": {"min_streamlines": min_streamlines, "min_fraction": min_fraction},
+            "rule": {"min_streamlines": min_streamlines, "min_fraction": min_fraction,
+                     "normalised_to_streamlines": round(target)},
             "edges_per_scan": per_scan_edges,
             "edges_consensus": int((upper(weights) > 0).sum())}

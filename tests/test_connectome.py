@@ -211,3 +211,12 @@ def test_atlas_nuclei_replace_schematic_relays():
     # without brain labels the MASSP-only relays are skipped, not left dangling
     G0 = graph.build(None, None, fake_profiles())
     assert "Inferior colliculus (L)" not in G0
+
+
+def test_group_normalise_equalises_yield():
+    from connectome.group import normalise
+
+    a = np.ones((2, 2)); b = 2 * np.ones((2, 2))
+    out, target = normalise(np.stack([a, b]), totals=[50_000, 100_000])
+    assert target == 75_000
+    assert np.allclose(out[0], 1.5) and np.allclose(out[1], 1.5)
