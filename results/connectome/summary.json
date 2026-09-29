@@ -1,15 +1,15 @@
 {
-  "nodes": 469,
-  "edges": 6828,
+  "nodes": 481,
+  "edges": 5298,
   "roles": {
-    "interneuron_pool": 293,
+    "interneuron_pool": 305,
     "relay": 14,
     "input": 65,
     "output": 97
   },
   "edges_by_provenance": {
-    "dti_brain": 5550,
-    "anatomy": 610,
+    "dti_brain": 4012,
+    "anatomy": 618,
     "pam50_tract": 668
   },
   "n_inputs": 65,
@@ -25,18 +25,105 @@
     "matplotlib": "3.11.2"
   },
   "brain_qc": {
-    "registration_dice": 0.936468607002602,
-    "median_wm_fa": 0.2945841348292093,
-    "regions_present": 111,
-    "regions_total": 111,
+    "registration_dice": 0.9648407787932111,
+    "median_wm_fa": 0.30361735208335294,
+    "regions_present": 129,
+    "regions_total": 129,
     "missing_regions": [],
     "voxel_size_mm": [
       2.0,
       2.0,
       2.0
-    ]
+    ],
+    "mask_volume_l": 1.043,
+    "reference_scan_streamlines": 57674,
+    "matrix_title": "Group consensus - median streamlines, edges present in >= 50% of 20 scans (ds000114)"
   },
-  "brain_streamlines": 50600,
+  "brain_streamlines": 57674,
+  "group": {
+    "dataset": "OpenNeuro ds000114",
+    "scans": [
+      "sub-01_ses-test",
+      "sub-01_ses-retest",
+      "sub-02_ses-test",
+      "sub-02_ses-retest",
+      "sub-03_ses-test",
+      "sub-03_ses-retest",
+      "sub-04_ses-test",
+      "sub-04_ses-retest",
+      "sub-05_ses-test",
+      "sub-05_ses-retest",
+      "sub-06_ses-test",
+      "sub-06_ses-retest",
+      "sub-07_ses-test",
+      "sub-07_ses-retest",
+      "sub-08_ses-test",
+      "sub-08_ses-retest",
+      "sub-09_ses-test",
+      "sub-09_ses-retest",
+      "sub-10_ses-test",
+      "sub-10_ses-retest"
+    ],
+    "rule": {
+      "min_streamlines": 5,
+      "min_fraction": 0.5,
+      "normalised_to_streamlines": 113486
+    },
+    "edges_consensus": 2006,
+    "excluded_scans": [],
+    "edges_per_scan_median": 2091,
+    "reliability": {
+      "within_subject_r": 0.8717142802399414,
+      "between_subject_r": 0.8428820142905143,
+      "n_within": 10,
+      "n_between": 180,
+      "identification": "9/10"
+    },
+    "streamlines_per_scan": {
+      "sub-01_ses-test": 57674,
+      "sub-01_ses-retest": 54697,
+      "sub-02_ses-test": 106600,
+      "sub-02_ses-retest": 99261,
+      "sub-03_ses-test": 97970,
+      "sub-03_ses-retest": 94438,
+      "sub-04_ses-test": 126855,
+      "sub-04_ses-retest": 132448,
+      "sub-05_ses-test": 132186,
+      "sub-05_ses-retest": 130122,
+      "sub-06_ses-test": 117311,
+      "sub-06_ses-retest": 109660,
+      "sub-07_ses-test": 100258,
+      "sub-07_ses-retest": 103093,
+      "sub-08_ses-test": 132268,
+      "sub-08_ses-retest": 129469,
+      "sub-09_ses-test": 131231,
+      "sub-09_ses-retest": 130674,
+      "sub-10_ses-test": 356648,
+      "sub-10_ses-retest": 88724
+    },
+    "registration_dice": {
+      "sub-01_ses-test": 0.965,
+      "sub-01_ses-retest": 0.968,
+      "sub-02_ses-test": 0.973,
+      "sub-02_ses-retest": 0.973,
+      "sub-03_ses-test": 0.972,
+      "sub-03_ses-retest": 0.971,
+      "sub-04_ses-test": 0.972,
+      "sub-04_ses-retest": 0.972,
+      "sub-05_ses-test": 0.97,
+      "sub-05_ses-retest": 0.971,
+      "sub-06_ses-test": 0.973,
+      "sub-06_ses-retest": 0.973,
+      "sub-07_ses-test": 0.971,
+      "sub-07_ses-retest": 0.972,
+      "sub-08_ses-test": 0.971,
+      "sub-08_ses-retest": 0.972,
+      "sub-09_ses-test": 0.972,
+      "sub-09_ses-retest": 0.971,
+      "sub-10_ses-test": 0.977,
+      "sub-10_ses-retest": 0.973
+    }
+  },
   "spinal_dwi": {
     "n_streamlines": 5408,
     "mean_length_mm": 43.5,

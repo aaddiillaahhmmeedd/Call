@@ -14,6 +14,25 @@ python -m connectome build               # ~3 min on 4 CPUs -> results/connectom
 python -m connectome build --subject 05 --save-tractograms   # other subject + .trk files
 ```
 
+### Group mode (committed results)
+
+`python -m connectome build --group` runs all 20 ds000114 scans (10 adults,
+test + retest; ~2 GB, ~1 h on 4 CPUs, cached per scan in `data/connectome/cache/`).
+Each scan is scaled to the same total streamline count, then a brain edge is
+kept if it has >= 5 streamlines in >= 50% of scans (2,006 region pairs; single
+scans find ~2,090). Scans failing QC (Dice < 0.85, < 10k streamlines, or a
+brain mask outside 0.7-2.5 L) are excluded and listed in `summary.json`.
+
+Test-retest: the same person's two scans correlate at r = 0.872, different
+people at r = 0.843, and a test scan matches its own retest better than anyone
+else's in 9/10 subjects. Most of the matrix is shared anatomy; the individual
+signature is small at this resolution.
+
+Brainstem nuclei from MASSP (red nucleus, substantia nigra, subthalamic
+nucleus, superior/inferior colliculi, periaqueductal grey, pedunculopontine
+nucleus, VTA) and the cerebellum from aseg are measured regions (129 total).
+See `DATA_SOURCES.md` for what else exists and what it would add.
+
 The build also writes `results/connectome/connectome3d.html`, a self-contained
 3D viewer (open it in any browser; it loads three.js from a CDN). It shows
 4,000 sampled brain streamlines, the cervical cord tractography, PAM50 tract

@@ -41,11 +41,15 @@ def figures(out: Path, br, sp, profiles, names):
         im = ax.imshow(M, cmap="Blues", interpolation="nearest")
         ax.set_title(br.qc.get("matrix_title") or f"Brain structural connectome - {br.n_streamlines:,} "
                      f"streamlines (ds000114 sub-01, CSA-ODF deterministic)", fontsize=10, color=INK, loc="left")
-        for b in (48, 96):
+        n_l = sum(r["kind"] == "cortex" and r["hemi"] == "L" for r in br.labels)
+        n_r = sum(r["kind"] == "cortex" and r["hemi"] == "R" for r in br.labels)
+        for b in (n_l, n_l + n_r):
             ax.axhline(b - 0.5, color=MUTED, lw=0.6)
             ax.axvline(b - 0.5, color=MUTED, lw=0.6)
-        ax.set_xticks([24, 72, 103], ["L cortex", "R cortex", "subcortex"], fontsize=8)
-        ax.set_yticks([24, 72, 103], ["L cortex", "R cortex", "subcortex"], fontsize=8)
+        ticks = [n_l / 2, n_l + n_r / 2, n_l + n_r + (len(order) - n_l - n_r) / 2]
+        names = ["L cortex", "R cortex", "subcortex, brainstem\n& cerebellum"]
+        ax.set_xticks(ticks, names, fontsize=8)
+        ax.set_yticks(ticks, names, fontsize=8)
         cb = fig.colorbar(im, ax=ax, shrink=0.7)
         cb.set_label("log10(1 + streamline count)", fontsize=8, color=MUTED)
         fig.tight_layout()

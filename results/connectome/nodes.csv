@@ -110,22 +110,34 @@ Pallidum (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
 Hippocampus (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
 Amygdala (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
 Accumbens (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Cerebellum (L),,L,cerebellum,,,,interneuron_pool,aseg atlas,brain
+Cerebellum (R),,R,cerebellum,,,,interneuron_pool,aseg atlas,brain
+Red nucleus (L),,L,brainstem,,,,relay,MASSP atlas,brainstem
+Red nucleus (R),,R,brainstem,,,,relay,MASSP atlas,brainstem
+Superior colliculus (L),,L,brainstem,,,,relay,MASSP atlas,brainstem
+Superior colliculus (R),,R,brainstem,,,,relay,MASSP atlas,brainstem
+Inferior colliculus (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Inferior colliculus (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Substantia nigra (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Substantia nigra (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Ventral tegmental area (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Ventral tegmental area (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Periaqueductal grey (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Periaqueductal grey (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Pedunculopontine nucleus (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Pedunculopontine nucleus (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Subthalamic nucleus (L),,L,subcortex,,,,interneuron_pool,MASSP atlas,brain
+Subthalamic nucleus (R),,R,subcortex,,,,interneuron_pool,MASSP atlas,brain
 Gracile nucleus (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Cuneate nucleus (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
-Red nucleus (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Reticular formation (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Vestibular nuclei (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
-Superior colliculus (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Inferior olive (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
-Cerebellum (L),,L,cerebellum,,,,interneuron_pool,anatomy,brain
 Gracile nucleus (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Cuneate nucleus (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
-Red nucleus (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Reticular formation (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Vestibular nuclei (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
-Superior colliculus (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
 Inferior olive (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
-Cerebellum (R),,R,cerebellum,,,,interneuron_pool,anatomy,brain
 C1 L dorsal horn,,L,dorsal horn,C1,0,,interneuron_pool,PAM50 grey matter,spinal
 C1 L intermediate zone,,L,intermediate zone,C1,0,,interneuron_pool,PAM50 grey matter,spinal
 C1 L ventral horn,,L,ventral horn,C1,0,,interneuron_pool,PAM50 grey matter,spinal
