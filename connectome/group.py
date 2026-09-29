@@ -106,12 +106,14 @@ def normalise(mats: np.ndarray, totals, target: float | None = None) -> tuple[np
 
 QC_MIN_DICE = 0.85
 QC_MIN_STREAMLINES = 10_000
+QC_MASK_LITRES = (0.7, 2.5)  # adult brain + some CSF; outside this the mask failed
 
 
 def passes_qc(qc: dict) -> bool:
     """Registration and tractography must both have worked. A failed brain
     mask shows up as low Dice and a collapse in streamline count."""
-    return qc["registration_dice"] >= QC_MIN_DICE and qc["n_streamlines"] >= QC_MIN_STREAMLINES
+    vol_ok = QC_MASK_LITRES[0] <= qc.get("mask_volume_l", 1.2) <= QC_MASK_LITRES[1]
+    return qc["registration_dice"] >= QC_MIN_DICE and qc["n_streamlines"] >= QC_MIN_STREAMLINES and vol_ok
 
 
 def run_group(data_dir, subjects=BRAIN_SUBJECTS, sessions=BRAIN_SESSIONS, *,

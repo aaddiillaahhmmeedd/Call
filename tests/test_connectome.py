@@ -234,3 +234,4 @@ def test_group_qc_gate():
 
     assert passes_qc({"registration_dice": 0.94, "n_streamlines": 50_600})
     assert not passes_qc({"registration_dice": 0.66, "n_streamlines": 3_372})
+    assert not passes_qc({"registration_dice": 0.97, "n_streamlines": 90_000, "mask_volume_l": 4.7})

@@ -225,5 +225,6 @@ def run(data_dir: str | Path, *, scan_dir: str = "brain", syn: bool = True, seed
     qc = {"registration_dice": dice, "median_wm_fa": float(np.median(fa[fa > 0.2])),
           "regions_present": len(present), "regions_total": n,
           "missing_regions": [r["id"] for r in table if r["index"] not in present],
-          "voxel_size_mm": [float(z) for z in img.header.get_zooms()[:3]]}
+          "voxel_size_mm": [float(z) for z in img.header.get_zooms()[:3]],
+          "mask_volume_l": round(float(mask.sum() * np.prod(img.header.get_zooms()[:3])) / 1e6, 3)}
     return BrainResult(table, M, len(sl), fa, affine, labels, qc, sl, mask)
