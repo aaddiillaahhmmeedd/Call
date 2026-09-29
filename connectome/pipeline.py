@@ -39,8 +39,8 @@ def figures(out: Path, br, sp, profiles, names):
         M = np.log10(1 + br.matrix[np.ix_(order, order)])
         fig, ax = plt.subplots(figsize=(9, 8))
         im = ax.imshow(M, cmap="Blues", interpolation="nearest")
-        ax.set_title(f"Brain structural connectome - {br.n_streamlines:,} streamlines "
-                     f"(ds000114 sub-01, CSA-ODF deterministic)", fontsize=10, color=INK, loc="left")
+        ax.set_title(br.qc.get("matrix_title") or f"Brain structural connectome - {br.n_streamlines:,} "
+                     f"streamlines (ds000114 sub-01, CSA-ODF deterministic)", fontsize=10, color=INK, loc="left")
         for b in (48, 96):
             ax.axhline(b - 0.5, color=MUTED, lw=0.6)
             ax.axvline(b - 0.5, color=MUTED, lw=0.6)
@@ -134,23 +134,79 @@ def environment() -> dict:
     return env
 
 
+def group_figure(out: Path, g: dict):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from .group import upper
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    ax = axes[0]
+    _style(ax)
+    present = (g["stack"] >= g["rule"]["min_streamlines"]).mean(0)
+    vals = upper(present)
+    vals = vals[vals > 0]
+    ax.hist(vals, bins=np.linspace(0, 1, 21), color=BLUE, edgecolor="white")
+    ax.axvline(g["rule"]["min_fraction"], color=ORANGE, lw=2)
+    ax.set_title(f"How often each region pair is connected (n = {len(g['keys'])} scans)",
+                 fontsize=10, color=INK, loc="left")
+    ax.set_xlabel(f"fraction of scans with >= {g['rule']['min_streamlines']} streamlines",
+                  fontsize=8, color=MUTED)
+    ax.set_ylabel("region pairs", fontsize=8, color=MUTED)
+    ax.annotate(f"kept: {g['edges_consensus']:,} pairs", (g["rule"]["min_fraction"], ax.get_ylim()[1] * 0.9),
+                xytext=(6, 0), textcoords="offset points", fontsize=8, color=ORANGE)
+    ax = axes[1]
+    _style(ax)
+    rel = g["reliability"]
+    ax.bar([0, 1], [rel["within_subject_r"], rel["between_subject_r"]], color=[BLUE, "#98a3ad"], width=0.55)
+    for x, v in zip([0, 1], [rel["within_subject_r"], rel["between_subject_r"]]):
+        ax.text(x, v + 0.01, f"{v:.3f}", ha="center", fontsize=9, color=INK)
+    ax.set_xticks([0, 1], ["same person\n(test vs retest)", "different people"], fontsize=8)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("correlation of log streamline counts", fontsize=8, color=MUTED)
+    ax.set_title(f"Test-retest: scan identifies its owner {rel['identification']}",
+                 fontsize=10, color=INK, loc="left")
+    fig.tight_layout()
+    fig.savefig(out / "group_reliability.png", dpi=130)
+    plt.close(fig)
+
+
 def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
         skip_brain=False, skip_spinal_dwi=False, save_tractograms=False, viewer_3d=True,
-        verbose=True):
+        group=False, verbose=True):
     data_dir, out = Path(data_dir), Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     download_all(data_dir, subject=subject, verbose=verbose)
 
-    br = None if skip_brain else brain.run(data_dir, verbose=verbose)
+    g = None
+    if group and not skip_brain:
+        from . import group as grp
+        from .sources import scan_prefix
+        g = grp.run_group(data_dir, verbose=verbose)
+        # reference scan supplies streamlines and positions for figures and the 3D view
+        br = brain.run(data_dir, scan_dir=scan_prefix(subject, "test"), verbose=verbose)
+        if [r["id"] for r in br.labels] != g["ids"]:
+            raise ValueError("reference scan and group use different label tables")
+        br.qc["reference_scan_streamlines"] = int(br.n_streamlines)
+        br.qc["matrix_title"] = (f"Group consensus - median streamlines, edges present in >= "
+                                 f"{g['rule']['min_fraction']:.0%} of {len(g['keys'])} scans (ds000114)")
+        br.matrix = g["weights"]
+    else:
+        br = None if skip_brain else brain.run(data_dir, verbose=verbose)
     sp = None if skip_spinal_dwi else spinal.dwi_run(data_dir, verbose=verbose)
     profiles, names = spinal.tract_profiles(data_dir)
 
-    G = graph.build(br.labels if br else None, br.matrix if br else None, profiles)
+    G = graph.build(br.labels if br else None, br.matrix if br else None, profiles,
+                    consistency=g["consistency"] if g else None)
     export(G, out)
     figures(out, br, sp, profiles, names)
+    if g is not None:
+        group_figure(out, g)
     if viewer_3d and br is not None:
         from . import scene
-        path = scene.write_html(scene.build_scene(data_dir, G, br, sp), out / "connectome3d.html")
+        path = scene.write_html(scene.build_scene(data_dir, G, br, sp, group_scans=len(g["keys"]) if g else 0),
+                                out / "connectome3d.html")
         if verbose:
             print(f"[3d] wrote {path} ({path.stat().st_size / 1e6:.1f} MB); open it in a browser")
     elif viewer_3d and verbose:
@@ -183,6 +239,13 @@ def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
     summary["environment"] = environment()
     summary["brain_qc"] = br.qc if br else None
     summary["brain_streamlines"] = br.n_streamlines if br else None
+    if g is not None:
+        summary["group"] = {"dataset": "OpenNeuro ds000114", "scans": [f"sub-{a}_ses-{b}" for a, b in g["keys"]],
+                            "rule": g["rule"], "edges_consensus": g["edges_consensus"],
+                            "edges_per_scan_median": int(np.median(g["edges_per_scan"])),
+                            "reliability": g["reliability"],
+                            "streamlines_per_scan": {k: v["n_streamlines"] for k, v in g["qc"].items()},
+                            "registration_dice": {k: round(v["registration_dice"], 3) for k, v in g["qc"].items()}}
     if sp is not None:
         summary["spinal_dwi"] = {
             "n_streamlines": sp.n_streamlines, "mean_length_mm": round(sp.mean_length_mm, 1),

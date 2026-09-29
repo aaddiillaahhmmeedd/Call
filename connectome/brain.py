@@ -1,7 +1,8 @@
 """Whole-brain structural connectome from diffusion MRI.
 
 Pipeline: brain mask -> DTI (FA) -> register MNI T2w template onto the mean
-b0 (affine + SyN) -> warp Harvard-Oxford labels into diffusion space ->
+b0 (affine + SyN) -> warp Harvard-Oxford + MASSP nuclei + aseg cerebellum
+labels into diffusion space ->
 CSA-ODF deterministic tractography -> streamline-count connectivity matrix.
 
 Tractography is undirected: it cannot tell afferent from efferent fibres.
@@ -16,7 +17,7 @@ import nibabel as nib
 import numpy as np
 from scipy import ndimage
 
-from .sources import HO_CORTICAL, HO_SUBCORTICAL
+from .sources import ASEG_CEREBELLUM, HO_CORTICAL, HO_SUBCORTICAL, MASSP_NUCLEI
 
 
 @dataclass
@@ -42,15 +43,35 @@ def build_label_table() -> list[dict]:
     for i, (name, hemi) in HO_SUBCORTICAL.items():
         kind = "brainstem" if name == "Brain-Stem" else "subcortex"
         table.append({"name": name, "hemi": hemi, "kind": kind, "src": ("HOSPA", i)})
+    for hemi, labs in ASEG_CEREBELLUM.items():
+        table.append({"name": "Cerebellum", "hemi": hemi, "kind": "cerebellum", "src": ("ASEG", labs)})
+    for i, (name, hemi, kind) in MASSP_NUCLEI.items():
+        table.append({"name": name, "hemi": hemi, "kind": kind, "src": ("MASSP", i)})
     for k, row in enumerate(table, start=1):
         row["index"] = k
         row["id"] = f"{row['name']} ({row['hemi']})" if row["hemi"] != "M" else row["name"]
     return table
 
 
-def combine_mni_atlas(cort: nib.Nifti1Image, sub: nib.Nifti1Image,
-                      table: list[dict]) -> np.ndarray:
-    """One integer label volume in MNI space, cortex split by hemisphere."""
+def resample_nearest(img: nib.Nifti1Image, target: nib.Nifti1Image) -> np.ndarray:
+    """Label image onto another grid of the same space (nearest neighbour)."""
+    ijk = np.indices(target.shape[:3]).reshape(3, -1).astype(float)
+    world = target.affine[:3, :3] @ ijk + target.affine[:3, 3:4]
+    src = np.linalg.inv(img.affine)
+    vox = np.rint(src[:3, :3] @ world + src[:3, 3:4]).astype(int)
+    data = np.asarray(img.dataobj).astype(int)
+    ok = np.all((vox >= 0) & (vox < np.array(data.shape[:3])[:, None]), axis=0)
+    out = np.zeros(ijk.shape[1], int)
+    out[ok] = data[vox[0, ok], vox[1, ok], vox[2, ok]]
+    return out.reshape(target.shape[:3])
+
+
+def combine_mni_atlas(cort: nib.Nifti1Image, sub: nib.Nifti1Image, table: list[dict],
+                      massp: nib.Nifti1Image | None = None,
+                      aseg: nib.Nifti1Image | None = None) -> np.ndarray:
+    """One integer label volume in MNI space, cortex split by hemisphere.
+    Later layers win where atlases overlap: cortex < subcortex < cerebellum
+    < MASSP nuclei (which sit inside the Harvard-Oxford brainstem label)."""
     c = np.asarray(cort.dataobj).astype(int)
     s = np.asarray(sub.dataobj).astype(int)
     ijk = np.indices(c.shape).reshape(3, -1)
@@ -65,6 +86,16 @@ def combine_mni_atlas(cort: nib.Nifti1Image, sub: nib.Nifti1Image,
         atlas, idx = row["src"]
         if atlas == "HOSPA":
             out[s == idx] = row["index"]
+    if aseg is not None:
+        a = resample_nearest(aseg, cort)
+        for row in table:
+            if row["src"][0] == "ASEG":
+                out[np.isin(a, row["src"][1])] = row["index"]
+    if massp is not None:
+        m = resample_nearest(massp, cort)
+        for row in table:
+            if row["src"][0] == "MASSP":
+                out[m == row["src"][1]] = row["index"]
     return out
 
 
@@ -79,9 +110,10 @@ def grow_labels(labels: np.ndarray, mask: np.ndarray, iterations: int = 2) -> np
     return out
 
 
-def run(data_dir: str | Path, *, syn: bool = True, seed_density: int = 1,
+def run(data_dir: str | Path, *, scan_dir: str = "brain", syn: bool = True, seed_density: int = 1,
         fa_seed: float = 0.3, fa_stop: float = 0.15, min_length_mm: float = 20.0,
         verbose: bool = True) -> BrainResult:
+    """``scan_dir`` (relative to ``data_dir``) holds dwi.nii.gz/.bval/.bvec."""
     from dipy.align import affine_registration, syn_registration
     from dipy.align.imaffine import AffineMap
     from dipy.core.gradients import gradient_table
@@ -98,10 +130,10 @@ def run(data_dir: str | Path, *, syn: bool = True, seed_density: int = 1,
 
     log = print if verbose else (lambda *a, **k: None)
     d = Path(data_dir)
-    img = nib.load(d / "brain/dwi.nii.gz")
+    img = nib.load(d / scan_dir / "dwi.nii.gz")
     data = np.asarray(img.dataobj, dtype=np.float32)
     affine = img.affine
-    bvals, bvecs = read_bvals_bvecs(str(d / "brain/dwi.bval"), str(d / "brain/dwi.bvec"))
+    bvals, bvecs = read_bvals_bvecs(str(d / scan_dir / "dwi.bval"), str(d / scan_dir / "dwi.bvec"))
     gtab = gradient_table(bvals, bvecs=bvecs)
     log(f"[brain] DWI {data.shape}, {int((~gtab.b0s_mask).sum())} directions")
 
@@ -127,8 +159,10 @@ def run(data_dir: str | Path, *, syn: bool = True, seed_density: int = 1,
     amap = AffineMap(reg_affine, domain_grid_shape=static.shape, domain_grid2world=affine,
                      codomain_grid_shape=t2_brain.shape, codomain_grid2world=t2.affine)
     table = build_label_table()
+    opt = {k: nib.load(d / f"mni/{f}.nii.gz") for k, f in (("massp", "MASSP20"), ("aseg", "aseg"))
+           if (d / f"mni/{f}.nii.gz").exists()}
     mni_labels = combine_mni_atlas(nib.load(d / "mni/HOCPA_th25.nii.gz"),
-                                   nib.load(d / "mni/HOSPA_th25.nii.gz"), table)
+                                   nib.load(d / "mni/HOSPA_th25.nii.gz"), table, **opt)
     if syn:
         log("[brain] SyN registration ...")
         pre = amap.transform(t2_brain)

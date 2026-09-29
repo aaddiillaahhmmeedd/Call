@@ -94,6 +94,11 @@ SUPRASPINAL = [
     ("Vestibular nuclei", "Cerebellum", "same", "vestibulocerebellar"),
     ("Inferior olive", "Cerebellum", "opp", "climbing fibres"),
     ("Thalamus", "Reticular formation", "same", "spinoreticular collateral relay"),
+    # relays that exist only when the MASSP nuclei are in the atlas
+    ("Inferior colliculus", "Thalamus", "same", "auditory: inferior colliculus -> MGN"),
+    ("Pedunculopontine nucleus", "Reticular formation", "same", "mesencephalic locomotor region -> reticulospinal"),
+    ("Substantia nigra", "Putamen", "same", "nigrostriatal dopamine"),
+    ("Periaqueductal grey", "Reticular formation", "same", "descending pain modulation (PAG -> RVM)"),
 ]
 
 # Cranial (non-spinal) peripheral inputs/outputs of the brain.
@@ -118,7 +123,10 @@ def sided(name: str, side: str) -> str:
 
 
 def build(brain_labels: list[dict] | None, brain_matrix: np.ndarray | None,
-          profiles: dict[int, np.ndarray], min_area_mm2: float = 0.05) -> nx.MultiDiGraph:
+          profiles: dict[int, np.ndarray], min_area_mm2: float = 0.05,
+          consistency: np.ndarray | None = None) -> nx.MultiDiGraph:
+    """``consistency`` (optional, same shape as ``brain_matrix``) is the
+    fraction of scans in which each tractography edge appeared."""
     G = nx.MultiDiGraph()
 
     def node(n, **attrs):
@@ -129,17 +137,24 @@ def build(brain_labels: list[dict] | None, brain_matrix: np.ndarray | None,
     # ---- brain regions (DTI atlas) ----
     if brain_labels is not None:
         for r in brain_labels:
-            node(r["id"], system="brain", kind=r["kind"], hemi=r["hemi"], role="interneuron_pool",
-                 source="Harvard-Oxford atlas")
+            src = r.get("src", ("HO",))[0]
+            node(r["id"], system="brainstem" if r["kind"] == "brainstem" and src == "MASSP" else "brain",
+                 kind=r["kind"], hemi=r["hemi"],
+                 role="relay" if r["name"] in BRAINSTEM_NUCLEI else "interneuron_pool",
+                 source={"MASSP": "MASSP atlas", "ASEG": "aseg atlas"}.get(src, "Harvard-Oxford atlas"))
         iu = np.triu_indices_from(brain_matrix, 1)
         for i, j in zip(*iu):
             w = float(brain_matrix[i, j])
             if w <= 0:
                 continue
             a, b = brain_labels[i]["id"], brain_labels[j]["id"]
+            extra, pathway = {}, "white matter (tractography)"
+            if consistency is not None:
+                extra["consistency"] = round(float(consistency[i, j]), 3)
+                pathway = f"white matter (tractography, in {consistency[i, j]:.0%} of scans)"
             for u, v in ((a, b), (b, a)):
                 G.add_edge(u, v, key="dti_brain", provenance="dti_brain", weight=w,
-                           directed=False, pathway="white matter (tractography)")
+                           directed=False, pathway=pathway, **extra)
     for side in "LR":
         for nm in BRAINSTEM_NUCLEI:
             node(sided(nm, side), system="brainstem", kind="nucleus", hemi=side,
@@ -163,7 +178,8 @@ def build(brain_labels: list[dict] | None, brain_matrix: np.ndarray | None,
                 t = dst
             else:
                 t = sided(dst, side if lat == "same" else OPP[side])
-            anat(s, t, note)
+            if s in G and t in G:
+                anat(s, t, note)
 
     # ---- spinal segments + peripheral input/output pools ----
     for li, level in enumerate(SPINAL_LEVELS):

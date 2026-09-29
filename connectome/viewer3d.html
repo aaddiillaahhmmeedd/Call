@@ -172,7 +172,8 @@ $("nodelist").innerHTML = nodes.map(n => n.id).sort().map(n => `<option value="$
 const st = S.stats;
 $("stats").innerHTML = [`${nodes.length} nodes`, `${E.length.toLocaleString()} edges`,
   `${nodes.filter(n => n.role === "input").length} inputs`, `${nodes.filter(n => n.role === "output").length} outputs`,
-  `${st.brain_streamlines_total.toLocaleString()} brain streamlines`].map(s => `<span>${s}</span>`).join("");
+  st.group_scans ? `brain edges: consensus of ${st.group_scans} scans` : `${st.brain_streamlines_total.toLocaleString()} brain streamlines`]
+  .map(s => `<span>${s}</span>`).join("");
 
 // ---------- theme ----------
 const css = () => getComputedStyle(document.documentElement);
@@ -223,7 +224,7 @@ function addLayer(key, obj, label, sub, swatch, on = true) {
 // streamlines
 const brainSL = new THREE.LineSegments(lineSegmentsFromPolylines(ras(S.brain_streamlines.xyz), lens(S.brain_streamlines.len), dec),
   new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false }));
-addLayer("brainsl", brainSL, "Brain streamlines", `${st.brain_streamlines_shown.toLocaleString()} of ${st.brain_streamlines_total.toLocaleString()} shown`, "linear-gradient(90deg,#e03a3a,#3ab04a,#3a6ae0)");
+addLayer("brainsl", brainSL, "Brain streamlines", `${st.brain_streamlines_shown.toLocaleString()} of ${st.brain_streamlines_total.toLocaleString()} shown${st.group_scans ? " · reference scan sub-01" : ""}`, "linear-gradient(90deg,#e03a3a,#3ab04a,#3a6ae0)");
 if (S.cord_streamlines) {
   const cordSL = new THREE.LineSegments(lineSegmentsFromPolylines(ras(S.cord_streamlines.xyz), lens(S.cord_streamlines.len), dec),
     new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35, depthWrite: false }));
@@ -258,7 +259,7 @@ function buildDTI() {
   dtiLines.geometry = g;
   $("thrlabel").textContent = `Tractography edges with at least ${thr} streamline${thr > 1 ? "s" : ""}: ${keep.length.toLocaleString()} of ${dtiEdges.length.toLocaleString()}`;
 }
-addLayer("dti", dtiLines, "Tractography edges", "region to region, direction unknown", "var(--dti)", false);
+addLayer("dti", dtiLines, "Tractography edges", st.group_scans ? `found in ≥ 50% of ${st.group_scans} scans · direction unknown` : "region to region, direction unknown", "var(--dti)", false);
 $("thr").addEventListener("input", buildDTI);
 
 // PAM50 tracts: centreline + link to the brain end + per-level terminations
@@ -466,7 +467,7 @@ function selectNode(i) {
   current = { type: "node", i }; redrawHighlight(); $("result").innerHTML = "";
   const n = nodes[i];
   const row = k => { const e = E[k], o = e[0] === i ? e[1] : e[0];
-    const w = e[2] === 0 ? `${e[3]} sl` : e[2] === 1 ? `${e[3]} mm²` : "";
+    const w = e[2] === 0 ? `${e[3]} sl${e[6] >= 0 ? ` · ${Math.round(100 * e[6])}%` : ""}` : e[2] === 1 ? `${e[3]} mm²` : "";
     return `<div data-i="${o}"><span>${chip(e[2])}${esc(nodes[o].id)}</span><span class="w">${w}</span></div>`; };
   const strong = und[i].filter(k => E[k][3] >= 5).sort((a, b) => E[b][3] - E[a][3]);
   $("info").innerHTML = `<b>${esc(n.id)}</b><span>${esc([n.system, n.kind, n.role.replace("_", " ")].filter(Boolean).join(" · "))}</span>` +

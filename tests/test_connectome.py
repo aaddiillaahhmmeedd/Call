@@ -25,7 +25,7 @@ def fake_brain():
 
 def test_label_table_is_complete_and_unique():
     table = brain.build_label_table()
-    assert len(table) == 48 * 2 + 15
+    assert len(table) == 48 * 2 + 15 + 2 + 16  # + cerebellum L/R + 16 MASSP nuclei
     assert len({r["id"] for r in table}) == len(table)
     assert [r["index"] for r in table] == list(range(1, len(table) + 1))
 
@@ -102,7 +102,7 @@ def test_read_atlas_names_skips_combined_and_csf(tmp_path):
 
 def test_sources_are_pinned():
     files = all_files()
-    assert len(files) == 3 + 4 + 3 + 38
+    assert len(files) == 3 + 6 + 3 + 38
     for url in files.values():
         assert url.startswith("https://")
         if "githubusercontent" in url:
@@ -158,3 +158,56 @@ def test_scene_write_html_embeds_payload(tmp_path):
     html = out.read_text(encoding="utf-8")
     assert scene.PLACEHOLDER not in html
     assert "</script><b>" not in html  # payload cannot close the script tag
+
+
+def test_group_consensus_keeps_consistent_edges_only():
+    from connectome.group import consensus
+
+    mats = np.zeros((4, 3, 3))
+    mats[:, 0, 1] = mats[:, 1, 0] = [10, 12, 0, 8]    # 3/4 scans >= 5 -> kept, median 10
+    mats[:, 0, 2] = mats[:, 2, 0] = [20, 1, 2, 0]     # 1/4 scans -> dropped
+    w, c = consensus(mats, min_streamlines=5, min_fraction=0.5)
+    assert w[0, 1] == 10 and c[0, 1] == 0.75
+    assert w[0, 2] == 0 and c[0, 2] == 0
+    assert np.allclose(w, w.T) and np.all(np.diag(w) == 0)
+
+
+def test_group_reliability_identifies_subjects():
+    from connectome.group import reliability
+
+    rng = np.random.default_rng(0)
+    mats = {}
+    for s in ("01", "02", "03"):
+        base = rng.gamma(2, 10, (20, 20))
+        base = base + base.T
+        for ses in ("test", "retest"):
+            noisy = base * rng.uniform(0.9, 1.1, base.shape)
+            mats[(s, ses)] = (noisy + noisy.T) / 2
+    r = reliability(mats)
+    assert r["within_subject_r"] > r["between_subject_r"]
+    assert r["identification"] == "3/3"
+
+
+def test_combine_atlas_layers_massp_over_brainstem():
+    aff = np.eye(4)
+    cort = np.zeros((4, 1, 1), np.uint8)
+    sub = np.full((4, 1, 1), 8, np.uint8)          # all Harvard-Oxford brainstem
+    massp = np.zeros((4, 1, 1), np.uint8)
+    massp[1, 0, 0] = 7                               # left red nucleus
+    table = brain.build_label_table()
+    out = brain.combine_mni_atlas(nib.Nifti1Image(cort, aff), nib.Nifti1Image(sub, aff), table,
+                                  massp=nib.Nifti1Image(massp, aff))
+    ids = {r["index"]: r["id"] for r in table}
+    assert [ids[v] for v in out[:, 0, 0]] == ["Brain-Stem", "Red nucleus (L)", "Brain-Stem", "Brain-Stem"]
+
+
+def test_atlas_nuclei_replace_schematic_relays():
+    table, M = fake_brain()
+    G = graph.build(table, M, fake_profiles())
+    assert G.nodes["Red nucleus (L)"]["source"] == "MASSP atlas"
+    assert G.nodes["Red nucleus (L)"]["role"] == "relay"
+    assert G.nodes["Cerebellum (R)"]["source"] == "aseg atlas"
+    assert G.has_edge("Inferior colliculus (L)", "Thalamus (L)")
+    # without brain labels the MASSP-only relays are skipped, not left dangling
+    G0 = graph.build(None, None, fake_profiles())
+    assert "Inferior colliculus (L)" not in G0

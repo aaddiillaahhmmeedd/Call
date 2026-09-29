@@ -24,14 +24,22 @@ SCT_EXAMPLE_RAW = (
 BRAIN_DATASET = "ds000114"
 
 
-def brain_files(subject: str = "01", session: str = "test") -> dict[str, str]:
+BRAIN_SUBJECTS = [f"{i:02d}" for i in range(1, 11)]
+BRAIN_SESSIONS = ["test", "retest"]
+
+
+def brain_files(subject: str = "01", session: str = "test", prefix: str = "brain") -> dict[str, str]:
     base = f"{OPENNEURO}/{BRAIN_DATASET}"
     dwi = f"sub-{subject}/ses-{session}/dwi/sub-{subject}_ses-{session}_dwi.nii.gz"
     return {
-        "brain/dwi.nii.gz": f"{base}/{dwi}",
-        "brain/dwi.bval": f"{base}/dwi.bval",
-        "brain/dwi.bvec": f"{base}/dwi.bvec",
+        f"{prefix}/dwi.nii.gz": f"{base}/{dwi}",
+        f"{prefix}/dwi.bval": f"{base}/dwi.bval",
+        f"{prefix}/dwi.bvec": f"{base}/dwi.bvec",
     }
+
+
+def scan_prefix(subject: str, session: str) -> str:
+    return f"brain/sub-{subject}_ses-{session}"
 
 
 TEMPLATE_FILES = {
@@ -39,6 +47,10 @@ TEMPLATE_FILES = {
     "mni/brain_mask.nii.gz": f"{TEMPLATEFLOW}/tpl-MNI152NLin2009cAsym_res-02_desc-brain_mask.nii.gz",
     "mni/HOCPA_th25.nii.gz": f"{TEMPLATEFLOW}/tpl-MNI152NLin2009cAsym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz",
     "mni/HOSPA_th25.nii.gz": f"{TEMPLATEFLOW}/tpl-MNI152NLin2009cAsym_res-02_atlas-HOSPA_desc-th25_dseg.nii.gz",
+    # MASSP (Bazin et al. 2020, 7T): midbrain/brainstem nuclei at 1 mm
+    "mni/MASSP20.nii.gz": f"{TEMPLATEFLOW}/tpl-MNI152NLin2009cAsym_res-01_atlas-MASSP20_dseg.nii.gz",
+    # FreeSurfer aseg on the template: supplies the cerebellum
+    "mni/aseg.nii.gz": f"{TEMPLATEFLOW}/tpl-MNI152NLin2009cAsym_res-02_seg-aseg_dseg.nii.gz",
 }
 
 # SCT example data: cervical spinal cord DWI, 0.9x0.9x5 mm, 30 dirs b=800.
@@ -106,6 +118,21 @@ HO_SUBCORTICAL = {
     18: ("Pallidum", "R"), 19: ("Hippocampus", "R"), 20: ("Amygdala", "R"),
     21: ("Accumbens", "R"),
 }
+
+# MASSP labels kept as regions (index: (name, hemi, kind)). Names match the
+# relay nodes in graph.py so these replace schematic positions with atlas ones.
+MASSP_NUCLEI = {
+    7: ("Red nucleus", "L", "brainstem"), 8: ("Red nucleus", "R", "brainstem"),
+    34: ("Superior colliculus", "L", "brainstem"), 35: ("Superior colliculus", "R", "brainstem"),
+    32: ("Inferior colliculus", "L", "brainstem"), 33: ("Inferior colliculus", "R", "brainstem"),
+    5: ("Substantia nigra", "L", "brainstem"), 6: ("Substantia nigra", "R", "brainstem"),
+    23: ("Ventral tegmental area", "L", "brainstem"), 24: ("Ventral tegmental area", "R", "brainstem"),
+    26: ("Periaqueductal grey", "L", "brainstem"), 27: ("Periaqueductal grey", "R", "brainstem"),
+    28: ("Pedunculopontine nucleus", "L", "brainstem"), 29: ("Pedunculopontine nucleus", "R", "brainstem"),
+    3: ("Subthalamic nucleus", "L", "subcortex"), 4: ("Subthalamic nucleus", "R", "subcortex"),
+}
+# aseg cerebellum: (cortex, white matter) label pairs
+ASEG_CEREBELLUM = {"L": (8, 7), "R": (47, 46)}
 
 # PAM50 spinal level labels 1..30.
 SPINAL_LEVELS = (

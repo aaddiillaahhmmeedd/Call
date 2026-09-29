@@ -152,7 +152,7 @@ def brainstem_frame(label_img, affine, brainstem_index):
 
 
 def build_scene(data_dir, G, br, sp=None, *, n_brain_streamlines=4000,
-                n_cord_streamlines=1500, seed=0) -> dict:
+                n_cord_streamlines=1500, seed=0, group_scans: int = 0) -> dict:
     rng = np.random.default_rng(seed)
     data_dir = Path(data_dir)
     table = br.labels
@@ -168,13 +168,16 @@ def build_scene(data_dir, G, br, sp=None, *, n_brain_streamlines=4000,
     h = bs["zhi"] - bs["zlo"]
     for side, sx in (("L", -1), ("R", 1)):  # RAS: +x is the subject's right
         for name in BRAINSTEM_NUCLEI:
+            if f"{name} ({side})" in pos:  # atlas-labelled (MASSP) nuclei keep their centroid
+                continue
             fz, ay, lx = NUCLEUS_LAYOUT[name]
             pos[f"{name} ({side})"] = np.array([bs["center"][0] + sx * lx,
                                                 bs["center"][1] + ay, bs["zlo"] + fz * h])
             placement[f"{name} ({side})"] = "schematic (inside brainstem label)"
-        pos[f"Cerebellum ({side})"] = np.array([bs["center"][0] + sx * 25,
-                                                bs["center"][1] - 40, bs["zlo"] + 0.3 * h])
-        placement[f"Cerebellum ({side})"] = "schematic (no cerebellum label in atlas)"
+        if f"Cerebellum ({side})" not in pos:
+            pos[f"Cerebellum ({side})"] = np.array([bs["center"][0] + sx * 25,
+                                                    bs["center"][1] - 40, bs["zlo"] + 0.3 * h])
+            placement[f"Cerebellum ({side})"] = "schematic (no cerebellum label in atlas)"
 
     # PAM50 cord, translated so C1 top meets the brainstem's lowest slice
     pam = pam50_geometry(data_dir)
@@ -245,7 +248,7 @@ def build_scene(data_dir, G, br, sp=None, *, n_brain_streamlines=4000,
             pw_index[pw] = len(pathways)
             pathways.append(pw)
         edges.append([index[u], index[v], prov_code[d["provenance"]], round(float(d["weight"]), 2),
-                      pw_index[pw], int(d.get("atlas_id", -1))])
+                      pw_index[pw], int(d.get("atlas_id", -1)), float(d.get("consistency", -1))])
 
     nodes = []
     for n in node_ids:
@@ -269,7 +272,7 @@ def build_scene(data_dir, G, br, sp=None, *, n_brain_streamlines=4000,
         "cord_outline": pack_points(surface_points(pam["mask"], pam["affine"], 14000, rng, step=3), shift),
         "brain_streamlines": pack_lines(brain_sl),
         "stats": {"brain_streamlines_total": int(br.n_streamlines),
-                  "brain_streamlines_shown": len(brain_sl)},
+                  "brain_streamlines_shown": len(brain_sl), "group_scans": group_scans},
     }
     if sp is not None and sp.streamlines is not None and len(sp.streamlines):
         cord_sl = decimate(sp.streamlines, n_cord_streamlines, rng, spacing_mm=2.0)
