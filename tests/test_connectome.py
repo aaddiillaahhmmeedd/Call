@@ -116,3 +116,45 @@ def test_environment_records_library_versions():
     assert env["python"] and env["platform"]
     assert set(ENV_PACKAGES) <= set(env)
     assert env["numpy"] == np.__version__
+
+
+def test_scene_point_packing_roundtrip_and_range():
+    from connectome import scene
+
+    pts = np.array([[1.23, -45.6, -561.0], [0.0, 0.05, 99.99]])
+    back = scene.unpack_points(scene.pack_points(pts, offset=(1.0, 0.0, 0.0)))
+    assert np.allclose(back, pts + [1.0, 0, 0], atol=0.051)
+    with pytest.raises(ValueError):
+        scene.pack_points(np.array([[4000.0, 0, 0]]))
+
+
+def test_scene_decimate_resamples_by_arc_length():
+    from connectome import scene
+
+    line = np.stack([np.zeros(101), np.zeros(101), np.linspace(0, 30, 101)], -1)
+    (out,) = scene.decimate([line], n=10, rng=np.random.default_rng(0), spacing_mm=3.0)
+    assert len(out) == 11
+    assert np.allclose(np.diff(out[:, 2]), 3.0)
+    assert np.allclose(out[[0, -1]], line[[0, -1]])
+
+
+def test_scene_surface_points_are_mask_boundary():
+    from connectome import scene
+
+    m = np.zeros((9, 9, 9), bool)
+    m[2:7, 2:7, 2:7] = True
+    pts = scene.surface_points(m, np.eye(4), n=10_000, rng=np.random.default_rng(0))
+    assert len(pts) == 5 ** 3 - 3 ** 3  # shell only, interior excluded
+    assert ((pts == 2) | (pts == 6)).any(axis=1).all()
+
+
+def test_scene_write_html_embeds_payload(tmp_path):
+    from connectome import scene
+
+    tpl = scene.VIEWER_TEMPLATE.read_text(encoding="utf-8")
+    assert scene.PLACEHOLDER in tpl
+    assert "cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" in tpl
+    out = scene.write_html({"nodes": [{"id": "</script><b>"}]}, tmp_path / "v.html")
+    html = out.read_text(encoding="utf-8")
+    assert scene.PLACEHOLDER not in html
+    assert "</script><b>" not in html  # payload cannot close the script tag

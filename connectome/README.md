@@ -14,6 +14,12 @@ python -m connectome build               # ~3 min on 4 CPUs -> results/connectom
 python -m connectome build --subject 05 --save-tractograms   # other subject + .trk files
 ```
 
+The build also writes `results/connectome/connectome3d.html`, a self-contained
+3D viewer (open it in any browser; it loads three.js from a CDN). It shows
+4,000 sampled brain streamlines, the cervical cord tractography, PAM50 tract
+paths, every node, and traces input-to-output pathways as a highlighted route.
+Pass `--no-3d` to skip it.
+
 ## Data (all public, pinned)
 
 | Part | Source | What it gives |
@@ -31,6 +37,11 @@ python -m connectome build --subject 05 --save-tractograms   # other subject + .
   - `dti_brain` - streamline count from this subject (undirected)
   - `pam50_tract` - spinal tract present at that segment; weight = tract area (mm^2)
   - `anatomy` - textbook relay with known direction and crossing (weight 1)
+- `connectome3d.html` - interactive 3D viewer (see above). Brain and cord
+  come from different sources: the PAM50 cord is attached at the lowest
+  brainstem slice and the second subject's cord tractography is shifted onto
+  C1-C5 (translations only). Brainstem nuclei, cerebellum, cranial nerves and
+  peripheral pools are placed schematically; each node says which.
 - `brain_dti_matrix.csv/.png`, `spinal_tract_areas_mm2.csv`,
   `spinal_tract_profiles.png`, `spinal_dwi_qc.png`, `summary.json`
   (includes the Python/dipy/numpy/scipy versions that produced the run)

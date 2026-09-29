@@ -135,7 +135,8 @@ def environment() -> dict:
 
 
 def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
-        skip_brain=False, skip_spinal_dwi=False, save_tractograms=False, verbose=True):
+        skip_brain=False, skip_spinal_dwi=False, save_tractograms=False, viewer_3d=True,
+        verbose=True):
     data_dir, out = Path(data_dir), Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     download_all(data_dir, subject=subject, verbose=verbose)
@@ -147,6 +148,13 @@ def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
     G = graph.build(br.labels if br else None, br.matrix if br else None, profiles)
     export(G, out)
     figures(out, br, sp, profiles, names)
+    if viewer_3d and br is not None:
+        from . import scene
+        path = scene.write_html(scene.build_scene(data_dir, G, br, sp), out / "connectome3d.html")
+        if verbose:
+            print(f"[3d] wrote {path} ({path.stat().st_size / 1e6:.1f} MB); open it in a browser")
+    elif viewer_3d and verbose:
+        print("[3d] skipped: the 3D viewer needs the brain tractography (drop --skip-brain)")
 
     if br is not None:
         ids = [r["id"] for r in br.labels]

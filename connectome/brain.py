@@ -29,6 +29,7 @@ class BrainResult:
     label_img: np.ndarray
     qc: dict = field(default_factory=dict)
     streamlines: object = None
+    mask: np.ndarray | None = None
 
 
 def build_label_table() -> list[dict]:
@@ -171,4 +172,4 @@ def run(data_dir: str | Path, *, syn: bool = True, seed_density: int = 1,
           "regions_present": len(present), "regions_total": n,
           "missing_regions": [r["id"] for r in table if r["index"] not in present],
           "voxel_size_mm": [float(z) for z in img.header.get_zooms()[:3]]}
-    return BrainResult(table, M, len(sl), fa, affine, labels, qc, sl)
+    return BrainResult(table, M, len(sl), fa, affine, labels, qc, sl, mask)

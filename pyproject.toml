@@ -20,6 +20,7 @@ include = ["netlist_agent*", "connectome*"]
 
 [tool.setuptools.package-data]
 netlist_agent = ["py.typed"]
+connectome = ["viewer3d.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

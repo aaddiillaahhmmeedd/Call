@@ -17,6 +17,7 @@ def main(argv=None):
     b.add_argument("--skip-brain", action="store_true", help="skip brain tractography (fast)")
     b.add_argument("--skip-spinal-dwi", action="store_true")
     b.add_argument("--save-tractograms", action="store_true", help="also write .trk files")
+    b.add_argument("--no-3d", action="store_true", help="skip the connectome3d.html viewer")
     a = p.parse_args(argv)
     if a.cmd == "download":
         from .download import download_all
@@ -24,7 +25,8 @@ def main(argv=None):
     else:
         from .pipeline import run
         run(a.data_dir, a.out_dir, subject=a.subject, skip_brain=a.skip_brain,
-            skip_spinal_dwi=a.skip_spinal_dwi, save_tractograms=a.save_tractograms)
+            skip_spinal_dwi=a.skip_spinal_dwi, save_tractograms=a.save_tractograms,
+            viewer_3d=not a.no_3d)
 
 
 if __name__ == "__main__":
