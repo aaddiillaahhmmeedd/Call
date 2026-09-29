@@ -104,6 +104,16 @@ def normalise(mats: np.ndarray, totals, target: float | None = None) -> tuple[np
     return mats * (target / totals)[:, None, None], target
 
 
+QC_MIN_DICE = 0.85
+QC_MIN_STREAMLINES = 10_000
+
+
+def passes_qc(qc: dict) -> bool:
+    """Registration and tractography must both have worked. A failed brain
+    mask shows up as low Dice and a collapse in streamline count."""
+    return qc["registration_dice"] >= QC_MIN_DICE and qc["n_streamlines"] >= QC_MIN_STREAMLINES
+
+
 def run_group(data_dir, subjects=BRAIN_SUBJECTS, sessions=BRAIN_SESSIONS, *,
               min_streamlines=5, min_fraction=0.5, verbose=True) -> dict:
     mats, qcs, ids = {}, {}, None
@@ -114,6 +124,13 @@ def run_group(data_dir, subjects=BRAIN_SUBJECTS, sessions=BRAIN_SESSIONS, *,
         elif scan_ids != ids:
             raise ValueError(f"label table changed between scans (sub-{s} ses-{ses}); clear data/cache")
         mats[(s, ses)], qcs[f"sub-{s}_ses-{ses}"] = m, qc
+    excluded = {k: qc for k, qc in qcs.items() if not passes_qc(qc)}
+    for k in excluded:
+        a, b = k[4:6], k.split("ses-")[1]
+        mats.pop((a, b))
+        if verbose:
+            print(f"[group] excluded {k}: Dice {excluded[k]['registration_dice']:.2f}, "
+                  f"{excluded[k]['n_streamlines']} streamlines")
     totals = [qcs[f"sub-{a}_ses-{b}"]["n_streamlines"] for a, b in mats]
     stack, target = normalise(np.stack(list(mats.values())), totals)
     mats = dict(zip(mats, stack))
@@ -121,6 +138,7 @@ def run_group(data_dir, subjects=BRAIN_SUBJECTS, sessions=BRAIN_SESSIONS, *,
     per_scan_edges = [int((upper(m) >= min_streamlines).sum()) for m in stack]
     return {"ids": ids, "weights": weights, "consistency": consist, "stack": stack,
             "keys": list(mats), "qc": qcs, "reliability": reliability(mats),
+            "excluded": sorted(excluded),
             "rule": {"min_streamlines": min_streamlines, "min_fraction": min_fraction,
                      "normalised_to_streamlines": round(target)},
             "edges_per_scan": per_scan_edges,

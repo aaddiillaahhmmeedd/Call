@@ -242,6 +242,7 @@ def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
     if g is not None:
         summary["group"] = {"dataset": "OpenNeuro ds000114", "scans": [f"sub-{a}_ses-{b}" for a, b in g["keys"]],
                             "rule": g["rule"], "edges_consensus": g["edges_consensus"],
+                            "excluded_scans": g["excluded"],
                             "edges_per_scan_median": int(np.median(g["edges_per_scan"])),
                             "reliability": g["reliability"],
                             "streamlines_per_scan": {k: v["n_streamlines"] for k, v in g["qc"].items()},

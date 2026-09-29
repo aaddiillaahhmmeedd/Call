@@ -220,3 +220,17 @@ def test_group_normalise_equalises_yield():
     out, target = normalise(np.stack([a, b]), totals=[50_000, 100_000])
     assert target == 75_000
     assert np.allclose(out[0], 1.5) and np.allclose(out[1], 1.5)
+
+
+def test_fill_mask_closes_holes_open_at_fov_edge():
+    m = np.zeros((9, 9, 4), bool)
+    m[1:8, 1:8, :] = True
+    m[3:6, 3:6, :] = False           # "white matter" hole running out of the volume
+    assert brain.fill_mask(m)[3:6, 3:6, :].all()
+
+
+def test_group_qc_gate():
+    from connectome.group import passes_qc
+
+    assert passes_qc({"registration_dice": 0.94, "n_streamlines": 50_600})
+    assert not passes_qc({"registration_dice": 0.66, "n_streamlines": 3_372})

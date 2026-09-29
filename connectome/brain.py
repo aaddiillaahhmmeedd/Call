@@ -99,6 +99,28 @@ def combine_mni_atlas(cort: nib.Nifti1Image, sub: nib.Nifti1Image, table: list[d
     return out
 
 
+def brain_mask(data: np.ndarray) -> np.ndarray:
+    """Otsu mask on the mean of all volumes (b0 + diffusion-weighted).
+    A b0-only mask can drop the white matter when its b0 signal falls below
+    the threshold (ds000114 sub-05 test), which silently confines
+    tractography to a cortical shell."""
+    from dipy.segment.mask import median_otsu
+
+    _, m = median_otsu(data.mean(-1), median_radius=4, numpass=4)
+    m = ndimage.binary_closing(m, structure=np.ones((3, 3, 3)), iterations=2)
+    return fill_mask(m)
+
+
+def fill_mask(mask: np.ndarray) -> np.ndarray:
+    """Fill interior holes. On some scans median_otsu drops the (darker)
+    white matter; a 3D fill cannot close a hole that reaches the edge of a
+    cut field of view, so also fill each axial slice."""
+    m = ndimage.binary_fill_holes(mask)
+    for z in range(m.shape[2]):
+        m[..., z] = ndimage.binary_fill_holes(m[..., z])
+    return m
+
+
 def grow_labels(labels: np.ndarray, mask: np.ndarray, iterations: int = 2) -> np.ndarray:
     """Dilate labels into unlabeled in-mask voxels so streamlines that stop
     at the grey/white boundary still land on a region."""
@@ -122,7 +144,6 @@ def run(data_dir: str | Path, *, scan_dir: str = "brain", syn: bool = True, seed
     from dipy.io.gradients import read_bvals_bvecs
     from dipy.reconst.dti import TensorModel
     from dipy.reconst.shm import CsaOdfModel
-    from dipy.segment.mask import median_otsu
     from dipy.tracking import utils
     from dipy.tracking.local_tracking import LocalTracking
     from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
@@ -138,8 +159,7 @@ def run(data_dir: str | Path, *, scan_dir: str = "brain", syn: bool = True, seed
     log(f"[brain] DWI {data.shape}, {int((~gtab.b0s_mask).sum())} directions")
 
     b0 = data[..., gtab.b0s_mask].mean(-1)
-    _, mask = median_otsu(b0, median_radius=2, numpass=1)
-    mask = ndimage.binary_fill_holes(mask)
+    mask = brain_mask(data)
 
     tenfit = TensorModel(gtab).fit(data, mask=mask)
     fa = np.clip(np.nan_to_num(tenfit.fa), 0, 1)
