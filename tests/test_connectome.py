@@ -107,3 +107,12 @@ def test_sources_are_pinned():
         assert url.startswith("https://")
         if "githubusercontent" in url:
             assert "/master/" not in url and "/main/" not in url
+
+
+def test_environment_records_library_versions():
+    from connectome.pipeline import ENV_PACKAGES, environment
+
+    env = environment()
+    assert env["python"] and env["platform"]
+    assert set(ENV_PACKAGES) <= set(env)
+    assert env["numpy"] == np.__version__

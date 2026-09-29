@@ -84,5 +84,15 @@
         "C2 L motor output"
       ]
     ]
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+    "dipy": "1.12.1",
+    "nibabel": "5.4.2",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "networkx": "3.6.1",
+    "matplotlib": "3.11.2"
   }
 }

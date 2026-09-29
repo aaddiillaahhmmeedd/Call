@@ -33,6 +33,7 @@ python -m connectome build --subject 05 --save-tractograms   # other subject + .
   - `anatomy` - textbook relay with known direction and crossing (weight 1)
 - `brain_dti_matrix.csv/.png`, `spinal_tract_areas_mm2.csv`,
   `spinal_tract_profiles.png`, `spinal_dwi_qc.png`, `summary.json`
+  (includes the Python/dipy/numpy/scipy versions that produced the run)
 
 ## What this is not
 
@@ -50,6 +51,10 @@ python -m connectome build --subject 05 --save-tractograms   # other subject + .
   cord area ~79 mm^2) but cannot separate e.g. corticospinal from
   rubrospinal fibres. PAM50 tract areas are one template, not a
   per-subject measurement.
+- **Counts depend on library versions.** The same data run on Windows with a
+  different dipy/numpy/scipy stack gave 45,383 brain streamlines vs 50,600
+  here (spinal: 5,389 vs 5,408); anatomy and PAM50 edges were identical.
+  Compare `environment` in `summary.json` before comparing runs.
 - **Deterministic tractography is noisy.** ~46% of region pairs have >= 1
   streamline; threshold on `weight` before doing graph statistics, and
   expect false positives/negatives (interhemispheric lateral cortex is

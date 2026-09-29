@@ -116,6 +116,24 @@ def export(G: nx.MultiDiGraph, out: Path):
             w.writerow([u, v, d["provenance"], round(d["weight"], 4), d["directed"], d["pathway"]])
 
 
+ENV_PACKAGES = ("dipy", "nibabel", "numpy", "scipy", "networkx", "matplotlib")
+
+
+def environment() -> dict:
+    """Library versions and platform, so a run can be tied to its setup.
+    Tractography counts shift between dipy/numpy/scipy versions."""
+    import platform
+    from importlib.metadata import PackageNotFoundError, version
+
+    env = {"python": platform.python_version(), "platform": platform.platform()}
+    for pkg in ENV_PACKAGES:
+        try:
+            env[pkg] = version(pkg)
+        except PackageNotFoundError:
+            env[pkg] = None
+    return env
+
+
 def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
         skip_brain=False, skip_spinal_dwi=False, save_tractograms=False, verbose=True):
     data_dir, out = Path(data_dir), Path(out_dir)
@@ -154,6 +172,7 @@ def run(data_dir="data/connectome", out_dir="results/connectome", subject="01",
                 save_trk(sft, str(out / f"{tag}_tractogram.trk"), bbox_valid_check=False)
 
     summary = graph.summarize(G)
+    summary["environment"] = environment()
     summary["brain_qc"] = br.qc if br else None
     summary["brain_streamlines"] = br.n_streamlines if br else None
     if sp is not None:
