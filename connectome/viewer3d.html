@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brain–Spinal Connectome 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a full-height 3D stage with a working side panel (stacks under the stage on phones). */
+:root {
+  --bg: #eef1f3; --panel: #ffffff; --ink: #152029; --muted: #56636e; --line: #d5dce1;
+  --canvas: #f7f9fa; --outline: #8a97a3; --chip: #eef2f5;
+  --dti: #138a86; --up: #2a6fdb; --down: #d0641e; --anat: #7a63b8; --hi: #d81b60;
+  --node-brain: #5d6b78; --node-cord: #8894a0;
+  --display: "Spectral", Georgia, serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151a; --panel: #161e25; --ink: #e4eaee; --muted: #97a4af; --line: #26313a;
+    --canvas: #0b1014; --outline: #56626d; --chip: #1f2830;
+    --dti: #3cc2bb; --up: #5b9cf0; --down: #f08a4b; --anat: #a58ee6; --hi: #ff4f8b;
+    --node-brain: #aab6c0; --node-cord: #7d8a96; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151a; --panel: #161e25; --ink: #e4eaee; --muted: #97a4af; --line: #26313a;
+  --canvas: #0b1014; --outline: #56626d; --chip: #1f2830;
+  --dti: #3cc2bb; --up: #5b9cf0; --down: #f08a4b; --anat: #a58ee6; --hi: #ff4f8b;
+  --node-brain: #aab6c0; --node-cord: #7d8a96; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--body); }
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+h1 { font: 600 1.25rem/1.2 var(--display); margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 16px; font: 0.8rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
+.stage { position: relative; min-width: 0; min-height: 0; background: var(--canvas); overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.views { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 2; max-width: calc(100% - 20px); }
+.hint { position: absolute; bottom: 8px; left: 10px; font-size: 0.75rem; color: var(--muted); z-index: 2; pointer-events: none; }
+.tip { position: absolute; z-index: 3; pointer-events: none; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem; white-space: nowrap; transform: translate(12px, -50%); }
+.tag { position: absolute; z-index: 2; pointer-events: none; font: 500 0.7rem var(--body); color: var(--ink); background: color-mix(in srgb, var(--panel) 85%, transparent); border-radius: 4px; padding: 1px 5px; white-space: nowrap; transform: translate(8px, -50%); }
+aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 14px 16px 24px; display: grid; gap: 18px; align-content: start; min-width: 0; }
+h2 { font: 600 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.group { display: grid; gap: 6px; }
+label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; cursor: pointer; }
+label.chk small { display: block; color: var(--muted); font-size: 0.74rem; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; margin-top: 3px; }
+input[type=range] { width: 100%; accent-color: var(--dti); }
+input[type=text] { font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 100%; }
+button { font: 500 0.78rem var(--body); color: var(--ink); background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+button:hover, button[aria-pressed="true"] { border-color: var(--hi); }
+button.primary { background: var(--hi); border-color: var(--hi); color: #fff; }
+:focus-visible { outline: 2px solid var(--hi); outline-offset: 2px; }
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.path { display: grid; gap: 2px; border-left: 2px solid var(--hi); margin-left: 4px; padding-left: 10px; font-size: 0.82rem; }
+.path .n { font-weight: 600; }
+.path .via { color: var(--muted); font-size: 0.76rem; }
+.chip { display: inline-block; font: 500 0.64rem/1 var(--mono); padding: 3px 5px; border-radius: 3px; background: var(--chip); margin-right: 5px; vertical-align: 1px; }
+.c0 { color: var(--dti); } .c1 { color: var(--down); } .c2 { color: var(--anat); }
+.msg { color: var(--muted); font-size: 0.8rem; }
+.info { font-size: 0.82rem; display: grid; gap: 4px; }
+.info b { font-size: 0.95rem; }
+.list { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.list div { padding: 4px 8px; border-bottom: 1px solid var(--line); font-size: 0.78rem; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+.list div:hover { background: var(--chip); }
+.list span.w { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 0.76rem; color: var(--muted); }
+.legend span { display: flex; gap: 6px; align-items: center; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.dec { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #e03a3a, #3ab04a, #3a6ae0); }
+.note { font-size: 0.76rem; color: var(--muted); }
+.fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+@media (max-width: 820px) {
+  html, body { height: auto; }
+  .app { height: auto; }
+  .main { grid-template-columns: 1fr; }
+  .stage { height: 64vh; min-height: 360px; }
+  aside { border-left: 0; border-top: 1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Brain–Spinal Connectome 3D</h1>
+    <div class="stats" id="stats"></div>
+  </header>
+  <div class="main">
+    <div class="stage" id="stage">
+      <div class="views" id="views"></div>
+      <div class="hint">Drag to rotate · scroll or pinch to zoom · click a node</div>
+      <div class="tip" id="tip" hidden></div>
+      <div id="tags"></div>
+    </div>
+    <aside>
+      <section class="group">
+        <h2>Trace a pathway</h2>
+        <div class="row" id="presets"></div>
+        <input type="text" id="from" list="nodelist" placeholder="From node" autocomplete="off" aria-label="From node">
+        <input type="text" id="to" list="nodelist" placeholder="To node" autocomplete="off" aria-label="To node">
+        <div class="row"><button class="primary" id="go">Trace</button><button id="clear">Clear</button></div>
+        <div id="result"></div>
+      </section>
+      <section class="group">
+        <h2>Selected node</h2>
+        <div class="info" id="info"><span class="msg">Click a node in the scene, or pick one from a pathway.</span></div>
+      </section>
+      <section class="group">
+        <h2>Layers</h2>
+        <div id="layers"></div>
+        <label for="thr" class="note" id="thrlabel"></label>
+        <input type="range" id="thr" min="1" max="100" step="1" value="20">
+        <label class="chk"><input type="checkbox" id="rotate"> Auto-rotate</label>
+      </section>
+      <section class="group">
+        <h2>Legend</h2>
+        <div class="legend" id="legend"></div>
+        <div class="note">Streamline colour is fibre direction: red left–right, green front–back, blue up–down.</div>
+        <div class="dec" aria-hidden="true"></div>
+      </section>
+      <section class="group">
+        <h2>How it is assembled</h2>
+        <p class="note">Brain regions and streamlines: diffusion MRI of one adult (OpenNeuro ds000114 sub-01), in that scan's space. Cord grey matter and tract paths: PAM50 template at true size, attached at the lowest brainstem slice. Cord tractography: a second person's cervical scan, shifted onto C1–C5. Brainstem nuclei, cerebellum, cranial nerves and peripheral pools are placed schematically; each node's panel says which.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+<datalist id="nodelist"></datalist>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const S = /*__SCENE__*/null;
+const PROV = ["DTI", "PAM50", "ANATOMY"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+function bytes(b64) { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; }
+// RAS mm -> three.js (x right, y up = superior, z toward viewer = posterior)
+function ras(b64) {
+  if (!b64) return new Float32Array(0);
+  const q = new Int16Array(bytes(b64)), out = new Float32Array(q.length);
+  for (let i = 0; i < q.length; i += 3) { out[i] = q[i] / 10; out[i + 1] = q[i + 2] / 10; out[i + 2] = -q[i + 1] / 10; }
+  return out;
+}
+const lens = b64 => b64 ? new Uint16Array(bytes(b64)) : new Uint16Array(0);
+
+if (!S || !window.THREE || !THREE.OrbitControls) {
+  $("stage").insertAdjacentHTML("beforeend", `<div class="fallback">The 3D engine could not load. It comes from cdnjs.cloudflare.com and cdn.jsdelivr.net, so this page needs an internet connection the first time it opens.</div>`);
+  throw new Error("three.js unavailable");
+}
+
+// ---------- data ----------
+const nodes = S.nodes, E = S.edges, P = ras(S.pos);
+const NP = i => new THREE.Vector3(P[3 * i], P[3 * i + 1], P[3 * i + 2]);
+const idx = new Map(nodes.map((n, i) => [n.id, i]));
+const ins = nodes.map(() => []), outs = nodes.map(() => []), und = nodes.map(() => []), dirAdj = nodes.map(() => []);
+E.forEach((e, k) => {
+  if (e[2] === 0) { und[e[0]].push(k); und[e[1]].push(k); return; }
+  outs[e[0]].push(k); ins[e[1]].push(k); dirAdj[e[0]].push(k);
+});
+const tractById = new Map(S.tracts.map(t => [t.atlas_id, { ...t, pts: ras(t.xyz) }]));
+const bsCenter = (() => { const p = ras(S.brainstem.center); return new THREE.Vector3(p[0], p[1], p[2]); })();
+$("nodelist").innerHTML = nodes.map(n => n.id).sort().map(n => `<option value="${esc(n)}">`).join("");
+const st = S.stats;
+$("stats").innerHTML = [`${nodes.length} nodes`, `${E.length.toLocaleString()} edges`,
+  `${nodes.filter(n => n.role === "input").length} inputs`, `${nodes.filter(n => n.role === "output").length} outputs`,
+  st.group_scans ? `brain edges: consensus of ${st.group_scans} scans` : `${st.brain_streamlines_total.toLocaleString()} brain streamlines`]
+  .map(s => `<span>${s}</span>`).join("");
+
+// ---------- theme ----------
+const css = () => getComputedStyle(document.documentElement);
+const col = name => new THREE.Color(css().getPropertyValue(name).trim() || "#888");
+
+// ---------- renderer ----------
+const stage = $("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 1, 5000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.rotateSpeed = 0.7;
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(-200, 300, -300); scene.add(sun);
+
+function lineSegmentsFromPolylines(xyz, counts, colorFn) {
+  let nseg = 0; for (const c of counts) nseg += Math.max(0, c - 1);
+  const pos = new Float32Array(nseg * 6), colr = new Float32Array(nseg * 6);
+  let p = 0, o = 0;
+  for (const c of counts) {
+    for (let k = 0; k < c - 1; k++) {
+      const a = 3 * (p + k), b = a + 3;
+      pos.set([xyz[a], xyz[a + 1], xyz[a + 2], xyz[b], xyz[b + 1], xyz[b + 2]], o);
+      const cc = colorFn(xyz[b] - xyz[a], xyz[b + 1] - xyz[a + 1], xyz[b + 2] - xyz[a + 2]);
+      colr.set([...cc, ...cc], o); o += 6;
+    }
+    p += c;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.BufferAttribute(colr, 3));
+  return g;
+}
+// DEC colouring in anatomical axes: three x = L-R, y = S-I, z = A-P
+const dec = (dx, dy, dz) => { const n = Math.hypot(dx, dy, dz) || 1; return [Math.abs(dx) / n, Math.abs(dz) / n, Math.abs(dy) / n]; };
+
+const layers = {};
+function addLayer(key, obj, label, sub, swatch, on = true) {
+  obj.visible = on; scene.add(obj);
+  layers[key] = obj;
+  $("layers").insertAdjacentHTML("beforeend",
+    `<label class="chk"><input type="checkbox" id="L-${key}" ${on ? "checked" : ""}><span class="swatch" style="background:${swatch}"></span><span>${label}${sub ? `<small>${sub}</small>` : ""}</span></label>`);
+  $(`L-${key}`).addEventListener("change", ev => { obj.visible = ev.target.checked; });
+}
+
+// streamlines
+const brainSL = new THREE.LineSegments(lineSegmentsFromPolylines(ras(S.brain_streamlines.xyz), lens(S.brain_streamlines.len), dec),
+  new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false }));
+addLayer("brainsl", brainSL, "Brain streamlines", `${st.brain_streamlines_shown.toLocaleString()} of ${st.brain_streamlines_total.toLocaleString()} shown${st.group_scans ? " · reference scan sub-01" : ""}`, "linear-gradient(90deg,#e03a3a,#3ab04a,#3a6ae0)");
+if (S.cord_streamlines) {
+  const cordSL = new THREE.LineSegments(lineSegmentsFromPolylines(ras(S.cord_streamlines.xyz), lens(S.cord_streamlines.len), dec),
+    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35, depthWrite: false }));
+  addLayer("cordsl", cordSL, "Cord tractography", `${st.cord_streamlines_shown.toLocaleString()} of ${st.cord_streamlines_total.toLocaleString()} · second subject, placed at C1–C5`, "linear-gradient(90deg,#3a6ae0,#3ab04a)");
+}
+// outlines
+function pointCloud(b64, size) {
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(ras(b64), 3));
+  return new THREE.Points(g, new THREE.PointsMaterial({ size, transparent: true, opacity: 0.35, depthWrite: false }));
+}
+const brainOutline = pointCloud(S.brain_outline, 1.3), cordOutline = pointCloud(S.cord_outline, 1.1);
+addLayer("brainout", brainOutline, "Brain outline", "edge of the scan's brain mask", "var(--outline)");
+addLayer("cordout", cordOutline, "Spinal cord outline", "PAM50 template, C1–S5", "var(--outline)");
+
+// DTI edges (rebuilt when the threshold moves)
+const dtiEdges = E.map((e, k) => k).filter(k => E[k][2] === 0);
+const maxW = Math.max(...dtiEdges.map(k => E[k][3]));
+const dtiLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, depthWrite: false }));
+function buildDTI() {
+  const thr = +$("thr").value, keep = dtiEdges.filter(k => E[k][3] >= thr);
+  const pos = new Float32Array(keep.length * 6), cl = new Float32Array(keep.length * 6);
+  const bg = col("--canvas"), fg = col("--dti");
+  keep.forEach((k, j) => {
+    const a = NP(E[k][0]), b = NP(E[k][1]);
+    pos.set([a.x, a.y, a.z, b.x, b.y, b.z], 6 * j);
+    const t = 0.2 + 0.8 * Math.log(E[k][3]) / Math.log(maxW), c = bg.clone().lerp(fg, t);
+    cl.set([c.r, c.g, c.b, c.r, c.g, c.b], 6 * j);
+  });
+  dtiLines.geometry.dispose();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(cl, 3));
+  dtiLines.geometry = g;
+  $("thrlabel").textContent = `Tractography edges with at least ${thr} streamline${thr > 1 ? "s" : ""}: ${keep.length.toLocaleString()} of ${dtiEdges.length.toLocaleString()}`;
+}
+addLayer("dti", dtiLines, "Tractography edges", st.group_scans ? `found in ≥ 50% of ${st.group_scans} scans · direction unknown` : "region to region, direction unknown", "var(--dti)", false);
+$("thr").addEventListener("input", buildDTI);
+
+// PAM50 tracts: centreline + link to the brain end + per-level terminations
+function tractRoute(t, li) {
+  // points from the top of the tract down to level li (inclusive)
+  const pts = [];
+  for (let j = 0; j < t.levels.length; j++) {
+    pts.push(new THREE.Vector3(t.pts[3 * j], t.pts[3 * j + 1], t.pts[3 * j + 2]));
+    if (t.levels[j] >= li) break;
+  }
+  return pts;
+}
+const tractGroup = new THREE.Group();
+function buildTracts() {
+  tractGroup.clear();
+  const up = col("--up"), down = col("--down");
+  const byTract = new Map();
+  E.forEach(e => { if (e[2] === 1) { if (!byTract.has(e[5])) byTract.set(e[5], []); byTract.get(e[5]).push(e); } });
+  for (const [aid, es] of byTract) {
+    const t = tractById.get(aid); if (!t) continue;
+    const c = t.dir === "down" ? down : up;
+    const cordEnd = e => t.dir === "down" ? e[1] : e[0], brainEnd = e => t.dir === "down" ? e[0] : e[1];
+    const deepest = Math.max(...es.map(e => nodes[cordEnd(e)].level));
+    const centre = tractRoute(t, deepest);
+    const bn = brainEnd(es[0]), head = [NP(bn)];
+    if (nodes[bn].kind === "cortex" || nodes[bn].kind === "subcortex" || nodes[bn].kind === "cerebellum") head.push(bsCenter.clone());
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([...head, ...centre]),
+      new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.9 }));
+    tractGroup.add(line);
+    const seg = [];
+    for (const e of es) {
+      const li = nodes[cordEnd(e)].level, j = t.levels.indexOf(li);
+      if (j < 0) continue;
+      seg.push(new THREE.Vector3(t.pts[3 * j], t.pts[3 * j + 1], t.pts[3 * j + 2]), NP(cordEnd(e)));
+    }
+    tractGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seg),
+      new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.35 })));
+  }
+}
+addLayer("tracts", tractGroup, "Spinal tracts (PAM50)", "orange descending, blue ascending", "linear-gradient(90deg,var(--down),var(--up))");
+
+const anatLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.45, depthWrite: false }));
+(function () {
+  const pts = []; E.forEach(e => { if (e[2] === 2) pts.push(NP(e[0]), NP(e[1])); });
+  anatLines.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+})();
+addLayer("anat", anatLines, "Anatomical relays", "reflex arcs, crossings, brainstem relays", "var(--anat)", false);
+
+// nodes
+const ROLE_COLOR = n => n.role === "input" ? "--up" : n.role === "output" ? "--down" : n.role === "relay" ? "--anat" : n.system === "spinal" ? "--node-cord" : "--node-brain";
+const radius = n => n.system === "brain" ? 1.7 : n.system === "brainstem" ? 1.5 : n.system === "spinal" ? 0.9 : 1.3;
+const sphere = new THREE.SphereGeometry(1, 14, 10);
+const nodeMesh = new THREE.InstancedMesh(sphere, new THREE.MeshLambertMaterial({ color: 0xffffff }), nodes.length);
+const m4 = new THREE.Matrix4();
+nodes.forEach((n, i) => { const r = radius(n); m4.makeScale(r, r, r).setPosition(NP(i)); nodeMesh.setMatrixAt(i, m4); });
+function colourNodes() { nodes.forEach((n, i) => nodeMesh.setColorAt(i, col(ROLE_COLOR(n)))); nodeMesh.instanceColor.needsUpdate = true; }
+addLayer("nodes", nodeMesh, "Nodes", "coloured by role (see legend)", "var(--node-brain)");
+
+$("legend").innerHTML = [["--up", "input pool"], ["--down", "output pool"], ["--anat", "relay nucleus"], ["--node-brain", "brain region"],
+  ["--node-cord", "cord grey matter"], ["--hi", "traced pathway"]].map(([v, l]) => `<span><i class="dot" style="background:var(${v})"></i>${l}</span>`).join("");
+
+// highlight layer
+const hiGroup = new THREE.Group(); scene.add(hiGroup);
+
+function applyTheme() {
+  scene.background = col("--canvas");
+  const o = col("--outline"); brainOutline.material.color = o; cordOutline.material.color = o;
+  anatLines.material.color = col("--anat");
+  buildDTI(); buildTracts(); colourNodes();
+  if (current) redrawHighlight();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+// ---------- camera views ----------
+const box = new THREE.Box3().setFromBufferAttribute(new THREE.BufferAttribute(P, 3));
+function frame(yTop, yBottom, dir = new THREE.Vector3(-0.55, 0.12, -1)) {
+  const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
+  const cy = (yTop + yBottom) / 2, h = Math.abs(yTop - yBottom) + 30;
+  const dist = (h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;
+  controls.target.set(cx, cy, cz);
+  camera.position.copy(controls.target).add(dir.normalize().multiplyScalar(dist));
+  controls.update();
+}
+const lvlY = name => { const i = idx.get(`${name} L ventral horn`); return i === undefined ? 0 : P[3 * i + 1]; };
+const VIEWS = [
+  ["Brain", () => frame(box.max.y, bsCenter.y - 20)],
+  ["Brain + neck", () => frame(box.max.y, lvlY("C8"))],
+  ["Whole CNS", () => frame(box.max.y, box.min.y)],
+  ["Cervical cord", () => frame(lvlY("C1") + 10, lvlY("T1") - 10, new THREE.Vector3(-1, 0.25, -0.7))],
+  ["Lumbosacral", () => frame(lvlY("L1") + 10, box.min.y, new THREE.Vector3(-1, 0.25, -0.7))],
+];
+$("views").innerHTML = VIEWS.map((v, i) => `<button data-v="${i}">${v[0]}</button>`).join("");
+$("views").addEventListener("click", ev => { const b = ev.target.closest("button"); if (b) VIEWS[+b.dataset.v][1](); });
+
+// ---------- tracing ----------
+function shortestPaths(src, dst, cap = 4) {
+  const dist = new Map([[src, 0]]), pred = new Map([[src, []]]), q = [src];
+  for (let qi = 0; qi < q.length; qi++) {
+    const u = q[qi];
+    if (dist.has(dst) && dist.get(u) >= dist.get(dst)) break;
+    for (const k of dirAdj[u]) {
+      const v = E[k][1];
+      if (!dist.has(v)) { dist.set(v, dist.get(u) + 1); pred.set(v, [k]); q.push(v); }
+      else if (dist.get(v) === dist.get(u) + 1) pred.get(v).push(k);
+    }
+  }
+  if (!dist.has(dst)) return [];
+  const res = [];
+  (function walk(v, acc) {
+    if (res.length >= cap) return;
+    if (v === src) { res.push(acc.slice().reverse()); return; }
+    const seen = new Set();
+    for (const k of pred.get(v)) { const key = E[k][0] + "|" + E[k][4]; if (seen.has(key)) continue; seen.add(key); acc.push(k); walk(E[k][0], acc); acc.pop(); }
+  })(dst, []);
+  return res;
+}
+function edgeRoute(k) {
+  const [u, v, p, , , aid] = E[k];
+  if (p !== 1 || !tractById.has(aid)) return [NP(u), NP(v)];
+  const t = tractById.get(aid), down = t.dir === "down";
+  const brainEnd = down ? u : v, cordEnd = down ? v : u;
+  const route = tractRoute(t, nodes[cordEnd].level);
+  const head = [NP(brainEnd)];
+  if (["cortex", "subcortex", "cerebellum"].includes(nodes[brainEnd].kind)) head.push(bsCenter.clone());
+  const pts = [...head, ...route, NP(cordEnd)];
+  return down ? pts : pts.reverse();
+}
+let current = null; // {type:'path', paths} | {type:'node', i}
+function clearHi() { hiGroup.children.forEach(o => o.geometry && o.geometry.dispose()); hiGroup.clear(); $("tags").innerHTML = ""; tagged = []; }
+let tagged = [];
+function tag(i) { tagged.push(i); $("tags").insertAdjacentHTML("beforeend", `<div class="tag" data-i="${i}">${esc(nodes[i].id)}</div>`); }
+function tube(points, color, r) {
+  const clean = points.filter((p, j) => j === 0 || p.distanceTo(points[j - 1]) > 0.05);
+  if (clean.length < 2) return;
+  const curve = new THREE.CatmullRomCurve3(clean, false, "centripetal");
+  hiGroup.add(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(600, clean.length * 12), r, 8, false),
+    new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.35 })));
+}
+function marker(i, color, r) {
+  const m = new THREE.Mesh(sphere, new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.4 }));
+  m.position.copy(NP(i)); m.scale.setScalar(r); hiGroup.add(m);
+}
+function dim(on) {
+  // fade the streamline clouds while something is highlighted so the highlight reads
+  brainSL.material.opacity = on ? 0.12 : 0.5;
+  if (layers.cordsl) layers.cordsl.material.opacity = on ? 0.1 : 0.35;
+}
+function redrawHighlight() {
+  clearHi(); dim(true);
+  const hi = col("--hi");
+  if (current.type === "path") {
+    current.paths.forEach((path, pi) => {
+      const pts = []; path.forEach(k => pts.push(...edgeRoute(k)));
+      tube(pts, pi === 0 ? hi : hi.clone().lerp(col("--canvas"), 0.45), pi === 0 ? 0.9 : 0.6);
+    });
+    const onPath = new Set(); current.paths[0].forEach(k => { onPath.add(E[k][0]); onPath.add(E[k][1]); });
+    onPath.forEach(i => { marker(i, hi, radius(nodes[i]) * 1.5); tag(i); });
+  } else {
+    const i = current.i, hi2 = hi.clone();
+    marker(i, hi2, radius(nodes[i]) * 1.8); tag(i);
+    const lines = [];
+    [...ins[i], ...outs[i], ...und[i]].forEach(k => {
+      if (E[k][2] === 0 && E[k][3] < 5) return;
+      const r = edgeRoute(k); for (let j = 0; j < r.length - 1; j++) lines.push(r[j], r[j + 1]);
+    });
+    hiGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), new THREE.LineBasicMaterial({ color: hi2 })));
+  }
+}
+const chip = p => `<span class="chip c${p}">${PROV[p]}</span>`;
+function trace(a, b) {
+  const s = idx.get(a), d = idx.get(b), out = $("result");
+  if (s === undefined || d === undefined) { out.innerHTML = `<p class="msg">Pick both nodes from the list, for example “L5 L DRG”.</p>`; return; }
+  const paths = shortestPaths(s, d);
+  if (!paths.length) { out.innerHTML = `<p class="msg">No directed route from ${esc(a)} to ${esc(b)}. Tractography edges are left out because they have no direction.</p>`; return; }
+  current = { type: "path", paths }; redrawHighlight();
+  const p0 = paths[0];
+  out.innerHTML = `<p class="msg">${paths.length} shortest route${paths.length > 1 ? "s" : ""}, ${p0.length} step${p0.length > 1 ? "s" : ""}. First route:</p>` +
+    `<div class="path"><span class="n">${esc(nodes[E[p0[0]][0]].id)}</span>` +
+    p0.map(k => `<span class="via">${chip(E[k][2])}${esc(S.pathways[E[k][4]])}${E[k][2] === 1 ? ` · ${E[k][3]} mm²` : ""}</span><span class="n">${esc(nodes[E[k][1]].id)}</span>`).join("") + `</div>`;
+  fitToPoints([...new Set(p0.flatMap(k => [E[k][0], E[k][1]]))].map(NP));
+}
+function fitToPoints(pts) {
+  const b = new THREE.Box3().setFromPoints(pts);
+  frame(b.max.y + 15, b.min.y - 15, camera.position.clone().sub(controls.target));
+}
+const PRESETS = [
+  ["Touch, left foot → cortex", "L5 L DRG", "Postcentral Gyrus (R)"],
+  ["Right motor cortex → left arm", "Precentral Gyrus (R)", "C6 L motor output"],
+  ["Knee-jerk reflex", "L4 R DRG", "L4 R motor output"],
+  ["Vision → neck turn", "CN II retinal ganglion cells", "C2 L motor output"],
+  ["Cortex → bladder", "Precentral Gyrus (L)", "S3 L parasympathetic output"],
+];
+$("presets").innerHTML = PRESETS.map((p, i) => `<button data-p="${i}">${esc(p[0])}</button>`).join("");
+$("presets").addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  const p = PRESETS[+b.dataset.p]; $("from").value = p[1]; $("to").value = p[2]; trace(p[1], p[2]);
+});
+$("go").addEventListener("click", () => trace($("from").value.trim(), $("to").value.trim()));
+["from", "to"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); }));
+$("clear").addEventListener("click", () => { current = null; clearHi(); dim(false); $("result").innerHTML = ""; });
+
+// ---------- selection ----------
+function selectNode(i) {
+  current = { type: "node", i }; redrawHighlight(); $("result").innerHTML = "";
+  const n = nodes[i];
+  const row = k => { const e = E[k], o = e[0] === i ? e[1] : e[0];
+    const w = e[2] === 0 ? `${e[3]} sl${e[6] >= 0 ? ` · ${Math.round(100 * e[6])}%` : ""}` : e[2] === 1 ? `${e[3]} mm²` : "";
+    return `<div data-i="${o}"><span>${chip(e[2])}${esc(nodes[o].id)}</span><span class="w">${w}</span></div>`; };
+  const strong = und[i].filter(k => E[k][3] >= 5).sort((a, b) => E[b][3] - E[a][3]);
+  $("info").innerHTML = `<b>${esc(n.id)}</b><span>${esc([n.system, n.kind, n.role.replace("_", " ")].filter(Boolean).join(" · "))}</span>` +
+    (n.cell ? `<span class="msg">${esc(n.cell)}</span>` : "") + `<span class="msg">Position: ${esc(n.placement)}</span>` +
+    `<span>Receives from ${ins[i].length} · sends to ${outs[i].length} · ${strong.length} tractography links (≥ 5 streamlines)</span>` +
+    `<div class="list">${[...ins[i], ...outs[i]].map(row).join("")}${strong.map(row).join("")}</div>`;
+}
+$("info").addEventListener("click", ev => { const d = ev.target.closest("[data-i]"); if (d) selectNode(+d.dataset.i); });
+
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let down = null;
+function pick(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  if (!nodeMesh.visible) return null;
+  const hit = ray.intersectObject(nodeMesh)[0];
+  return hit ? hit.instanceId : null;
+}
+renderer.domElement.addEventListener("pointermove", ev => {
+  const i = pick(ev), tip = $("tip");
+  if (i === null) { tip.hidden = true; renderer.domElement.style.cursor = ""; return; }
+  const r = stage.getBoundingClientRect();
+  tip.hidden = false; tip.style.left = `${ev.clientX - r.left}px`; tip.style.top = `${ev.clientY - r.top}px`;
+  tip.textContent = `${nodes[i].id} · ${nodes[i].role.replace("_", " ")}`; renderer.domElement.style.cursor = "pointer";
+});
+renderer.domElement.addEventListener("pointerdown", ev => { down = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener("pointerup", ev => {
+  if (!down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 5) return;
+  const i = pick(ev); if (i !== null) selectNode(i);
+});
+
+// ---------- loop ----------
+$("rotate").addEventListener("change", ev => { controls.autoRotate = ev.target.checked; });
+controls.autoRotateSpeed = 0.8;
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+const v = new THREE.Vector3();
+function tick() {
+  controls.update(); renderer.render(scene, camera);
+  const w = stage.clientWidth, h = stage.clientHeight;
+  for (const el of $("tags").children) {
+    v.copy(NP(+el.dataset.i)).project(camera);
+    el.hidden = v.z > 1;
+    el.style.left = `${(v.x + 1) / 2 * w}px`; el.style.top = `${(1 - v.y) / 2 * h}px`;
+  }
+  requestAnimationFrame(tick);
+}
+resize(); buildDTI(); applyTheme(); VIEWS[1][1]();
+tick();
+window.__viewerReady = true;
+</script>
+</body>
+</html>

@@ -9,14 +9,18 @@ description = "PCB toolkit: netlisting, ratsnest, placement, routing, DRC, and f
 requires-python = ">=3.10"
 dependencies = ["requests>=2.31"]
 
+[project.optional-dependencies]
+connectome = ["dipy>=1.9", "nibabel>=5", "networkx>=3", "numpy", "scipy", "matplotlib"]
+
 [project.scripts]
 netlist-agent = "netlist_agent.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["netlist_agent*"]
+include = ["netlist_agent*", "connectome*"]
 
 [tool.setuptools.package-data]
 netlist_agent = ["py.typed"]
+connectome = ["viewer3d.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,482 @@
+id,cell_type,hemi,kind,level,level_index,parent,role,source,system
+Frontal Pole (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Pole (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Insular Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Insular Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Superior Frontal Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Superior Frontal Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Middle Frontal Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Middle Frontal Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Frontal Gyrus, pars triangularis (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Frontal Gyrus, pars triangularis (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Frontal Gyrus, pars opercularis (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Frontal Gyrus, pars opercularis (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Precentral Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Precentral Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Temporal Pole (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Temporal Pole (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Superior Temporal Gyrus, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Superior Temporal Gyrus, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Superior Temporal Gyrus, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Superior Temporal Gyrus, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Middle Temporal Gyrus, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Middle Temporal Gyrus, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Middle Temporal Gyrus, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Middle Temporal Gyrus, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Middle Temporal Gyrus, temporooccipital part (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Middle Temporal Gyrus, temporooccipital part (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Temporal Gyrus, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Temporal Gyrus, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Temporal Gyrus, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Temporal Gyrus, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Temporal Gyrus, temporooccipital part (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Inferior Temporal Gyrus, temporooccipital part (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Postcentral Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Postcentral Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Superior Parietal Lobule (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Superior Parietal Lobule (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Supramarginal Gyrus, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Supramarginal Gyrus, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Supramarginal Gyrus, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Supramarginal Gyrus, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Angular Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Angular Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Lateral Occipital Cortex, superior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Lateral Occipital Cortex, superior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Lateral Occipital Cortex, inferior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Lateral Occipital Cortex, inferior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Intracalcarine Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Intracalcarine Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Medial Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Medial Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Juxtapositional Lobule Cortex (SMA) (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Juxtapositional Lobule Cortex (SMA) (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Subcallosal Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Subcallosal Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Paracingulate Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Paracingulate Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Cingulate Gyrus, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Cingulate Gyrus, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Cingulate Gyrus, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Cingulate Gyrus, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Precuneous Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Precuneous Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Cuneal Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Cuneal Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Orbital Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Orbital Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Parahippocampal Gyrus, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Parahippocampal Gyrus, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Parahippocampal Gyrus, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Parahippocampal Gyrus, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Lingual Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Lingual Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Temporal Fusiform Cortex, anterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Temporal Fusiform Cortex, anterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Temporal Fusiform Cortex, posterior division (L)",,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+"Temporal Fusiform Cortex, posterior division (R)",,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Temporal Occipital Fusiform Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Temporal Occipital Fusiform Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Occipital Fusiform Gyrus (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Occipital Fusiform Gyrus (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Operculum Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Frontal Operculum Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Central Opercular Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Central Opercular Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Parietal Operculum Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Parietal Operculum Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Planum Polare (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Planum Polare (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Heschl's Gyrus (includes H1 and H2) (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Heschl's Gyrus (includes H1 and H2) (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Planum Temporale (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Planum Temporale (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Supracalcarine Cortex (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Supracalcarine Cortex (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Occipital Pole (L),,L,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Occipital Pole (R),,R,cortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Thalamus (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Caudate (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Putamen (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Pallidum (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Brain-Stem,,M,brainstem,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Hippocampus (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Amygdala (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Accumbens (L),,L,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Thalamus (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Caudate (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Putamen (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Pallidum (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Hippocampus (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Amygdala (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Accumbens (R),,R,subcortex,,,,interneuron_pool,Harvard-Oxford atlas,brain
+Cerebellum (L),,L,cerebellum,,,,interneuron_pool,aseg atlas,brain
+Cerebellum (R),,R,cerebellum,,,,interneuron_pool,aseg atlas,brain
+Red nucleus (L),,L,brainstem,,,,relay,MASSP atlas,brainstem
+Red nucleus (R),,R,brainstem,,,,relay,MASSP atlas,brainstem
+Superior colliculus (L),,L,brainstem,,,,relay,MASSP atlas,brainstem
+Superior colliculus (R),,R,brainstem,,,,relay,MASSP atlas,brainstem
+Inferior colliculus (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Inferior colliculus (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Substantia nigra (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Substantia nigra (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Ventral tegmental area (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Ventral tegmental area (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Periaqueductal grey (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Periaqueductal grey (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Pedunculopontine nucleus (L),,L,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Pedunculopontine nucleus (R),,R,brainstem,,,,interneuron_pool,MASSP atlas,brainstem
+Subthalamic nucleus (L),,L,subcortex,,,,interneuron_pool,MASSP atlas,brain
+Subthalamic nucleus (R),,R,subcortex,,,,interneuron_pool,MASSP atlas,brain
+Gracile nucleus (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Cuneate nucleus (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Reticular formation (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Vestibular nuclei (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Inferior olive (L),,L,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Gracile nucleus (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Cuneate nucleus (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Reticular formation (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Vestibular nuclei (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+Inferior olive (R),,R,nucleus,,,Brain-Stem,relay,anatomy,brainstem
+C1 L dorsal horn,,L,dorsal horn,C1,0,,interneuron_pool,PAM50 grey matter,spinal
+C1 L intermediate zone,,L,intermediate zone,C1,0,,interneuron_pool,PAM50 grey matter,spinal
+C1 L ventral horn,,L,ventral horn,C1,0,,interneuron_pool,PAM50 grey matter,spinal
+C1 R dorsal horn,,R,dorsal horn,C1,0,,interneuron_pool,PAM50 grey matter,spinal
+C1 R intermediate zone,,R,intermediate zone,C1,0,,interneuron_pool,PAM50 grey matter,spinal
+C1 R ventral horn,,R,ventral horn,C1,0,,interneuron_pool,PAM50 grey matter,spinal
+C2 L dorsal horn,,L,dorsal horn,C2,1,,interneuron_pool,PAM50 grey matter,spinal
+C2 L intermediate zone,,L,intermediate zone,C2,1,,interneuron_pool,PAM50 grey matter,spinal
+C2 L ventral horn,,L,ventral horn,C2,1,,interneuron_pool,PAM50 grey matter,spinal
+C2 R dorsal horn,,R,dorsal horn,C2,1,,interneuron_pool,PAM50 grey matter,spinal
+C2 R intermediate zone,,R,intermediate zone,C2,1,,interneuron_pool,PAM50 grey matter,spinal
+C2 R ventral horn,,R,ventral horn,C2,1,,interneuron_pool,PAM50 grey matter,spinal
+C3 L dorsal horn,,L,dorsal horn,C3,2,,interneuron_pool,PAM50 grey matter,spinal
+C3 L intermediate zone,,L,intermediate zone,C3,2,,interneuron_pool,PAM50 grey matter,spinal
+C3 L ventral horn,,L,ventral horn,C3,2,,interneuron_pool,PAM50 grey matter,spinal
+C3 R dorsal horn,,R,dorsal horn,C3,2,,interneuron_pool,PAM50 grey matter,spinal
+C3 R intermediate zone,,R,intermediate zone,C3,2,,interneuron_pool,PAM50 grey matter,spinal
+C3 R ventral horn,,R,ventral horn,C3,2,,interneuron_pool,PAM50 grey matter,spinal
+C4 L dorsal horn,,L,dorsal horn,C4,3,,interneuron_pool,PAM50 grey matter,spinal
+C4 L intermediate zone,,L,intermediate zone,C4,3,,interneuron_pool,PAM50 grey matter,spinal
+C4 L ventral horn,,L,ventral horn,C4,3,,interneuron_pool,PAM50 grey matter,spinal
+C4 R dorsal horn,,R,dorsal horn,C4,3,,interneuron_pool,PAM50 grey matter,spinal
+C4 R intermediate zone,,R,intermediate zone,C4,3,,interneuron_pool,PAM50 grey matter,spinal
+C4 R ventral horn,,R,ventral horn,C4,3,,interneuron_pool,PAM50 grey matter,spinal
+C5 L dorsal horn,,L,dorsal horn,C5,4,,interneuron_pool,PAM50 grey matter,spinal
+C5 L intermediate zone,,L,intermediate zone,C5,4,,interneuron_pool,PAM50 grey matter,spinal
+C5 L ventral horn,,L,ventral horn,C5,4,,interneuron_pool,PAM50 grey matter,spinal
+C5 R dorsal horn,,R,dorsal horn,C5,4,,interneuron_pool,PAM50 grey matter,spinal
+C5 R intermediate zone,,R,intermediate zone,C5,4,,interneuron_pool,PAM50 grey matter,spinal
+C5 R ventral horn,,R,ventral horn,C5,4,,interneuron_pool,PAM50 grey matter,spinal
+C6 L dorsal horn,,L,dorsal horn,C6,5,,interneuron_pool,PAM50 grey matter,spinal
+C6 L intermediate zone,,L,intermediate zone,C6,5,,interneuron_pool,PAM50 grey matter,spinal
+C6 L ventral horn,,L,ventral horn,C6,5,,interneuron_pool,PAM50 grey matter,spinal
+C6 R dorsal horn,,R,dorsal horn,C6,5,,interneuron_pool,PAM50 grey matter,spinal
+C6 R intermediate zone,,R,intermediate zone,C6,5,,interneuron_pool,PAM50 grey matter,spinal
+C6 R ventral horn,,R,ventral horn,C6,5,,interneuron_pool,PAM50 grey matter,spinal
+C7 L dorsal horn,,L,dorsal horn,C7,6,,interneuron_pool,PAM50 grey matter,spinal
+C7 L intermediate zone,,L,intermediate zone,C7,6,,interneuron_pool,PAM50 grey matter,spinal
+C7 L ventral horn,,L,ventral horn,C7,6,,interneuron_pool,PAM50 grey matter,spinal
+C7 R dorsal horn,,R,dorsal horn,C7,6,,interneuron_pool,PAM50 grey matter,spinal
+C7 R intermediate zone,,R,intermediate zone,C7,6,,interneuron_pool,PAM50 grey matter,spinal
+C7 R ventral horn,,R,ventral horn,C7,6,,interneuron_pool,PAM50 grey matter,spinal
+C8 L dorsal horn,,L,dorsal horn,C8,7,,interneuron_pool,PAM50 grey matter,spinal
+C8 L intermediate zone,,L,intermediate zone,C8,7,,interneuron_pool,PAM50 grey matter,spinal
+C8 L ventral horn,,L,ventral horn,C8,7,,interneuron_pool,PAM50 grey matter,spinal
+C8 R dorsal horn,,R,dorsal horn,C8,7,,interneuron_pool,PAM50 grey matter,spinal
+C8 R intermediate zone,,R,intermediate zone,C8,7,,interneuron_pool,PAM50 grey matter,spinal
+C8 R ventral horn,,R,ventral horn,C8,7,,interneuron_pool,PAM50 grey matter,spinal
+T1 L dorsal horn,,L,dorsal horn,T1,8,,interneuron_pool,PAM50 grey matter,spinal
+T1 L intermediate zone,,L,intermediate zone,T1,8,,interneuron_pool,PAM50 grey matter,spinal
+T1 L ventral horn,,L,ventral horn,T1,8,,interneuron_pool,PAM50 grey matter,spinal
+T1 R dorsal horn,,R,dorsal horn,T1,8,,interneuron_pool,PAM50 grey matter,spinal
+T1 R intermediate zone,,R,intermediate zone,T1,8,,interneuron_pool,PAM50 grey matter,spinal
+T1 R ventral horn,,R,ventral horn,T1,8,,interneuron_pool,PAM50 grey matter,spinal
+T2 L dorsal horn,,L,dorsal horn,T2,9,,interneuron_pool,PAM50 grey matter,spinal
+T2 L intermediate zone,,L,intermediate zone,T2,9,,interneuron_pool,PAM50 grey matter,spinal
+T2 L ventral horn,,L,ventral horn,T2,9,,interneuron_pool,PAM50 grey matter,spinal
+T2 R dorsal horn,,R,dorsal horn,T2,9,,interneuron_pool,PAM50 grey matter,spinal
+T2 R intermediate zone,,R,intermediate zone,T2,9,,interneuron_pool,PAM50 grey matter,spinal
+T2 R ventral horn,,R,ventral horn,T2,9,,interneuron_pool,PAM50 grey matter,spinal
+T3 L dorsal horn,,L,dorsal horn,T3,10,,interneuron_pool,PAM50 grey matter,spinal
+T3 L intermediate zone,,L,intermediate zone,T3,10,,interneuron_pool,PAM50 grey matter,spinal
+T3 L ventral horn,,L,ventral horn,T3,10,,interneuron_pool,PAM50 grey matter,spinal
+T3 R dorsal horn,,R,dorsal horn,T3,10,,interneuron_pool,PAM50 grey matter,spinal
+T3 R intermediate zone,,R,intermediate zone,T3,10,,interneuron_pool,PAM50 grey matter,spinal
+T3 R ventral horn,,R,ventral horn,T3,10,,interneuron_pool,PAM50 grey matter,spinal
+T4 L dorsal horn,,L,dorsal horn,T4,11,,interneuron_pool,PAM50 grey matter,spinal
+T4 L intermediate zone,,L,intermediate zone,T4,11,,interneuron_pool,PAM50 grey matter,spinal
+T4 L ventral horn,,L,ventral horn,T4,11,,interneuron_pool,PAM50 grey matter,spinal
+T4 R dorsal horn,,R,dorsal horn,T4,11,,interneuron_pool,PAM50 grey matter,spinal
+T4 R intermediate zone,,R,intermediate zone,T4,11,,interneuron_pool,PAM50 grey matter,spinal
+T4 R ventral horn,,R,ventral horn,T4,11,,interneuron_pool,PAM50 grey matter,spinal
+T5 L dorsal horn,,L,dorsal horn,T5,12,,interneuron_pool,PAM50 grey matter,spinal
+T5 L intermediate zone,,L,intermediate zone,T5,12,,interneuron_pool,PAM50 grey matter,spinal
+T5 L ventral horn,,L,ventral horn,T5,12,,interneuron_pool,PAM50 grey matter,spinal
+T5 R dorsal horn,,R,dorsal horn,T5,12,,interneuron_pool,PAM50 grey matter,spinal
+T5 R intermediate zone,,R,intermediate zone,T5,12,,interneuron_pool,PAM50 grey matter,spinal
+T5 R ventral horn,,R,ventral horn,T5,12,,interneuron_pool,PAM50 grey matter,spinal
+T6 L dorsal horn,,L,dorsal horn,T6,13,,interneuron_pool,PAM50 grey matter,spinal
+T6 L intermediate zone,,L,intermediate zone,T6,13,,interneuron_pool,PAM50 grey matter,spinal
+T6 L ventral horn,,L,ventral horn,T6,13,,interneuron_pool,PAM50 grey matter,spinal
+T6 R dorsal horn,,R,dorsal horn,T6,13,,interneuron_pool,PAM50 grey matter,spinal
+T6 R intermediate zone,,R,intermediate zone,T6,13,,interneuron_pool,PAM50 grey matter,spinal
+T6 R ventral horn,,R,ventral horn,T6,13,,interneuron_pool,PAM50 grey matter,spinal
+T7 L dorsal horn,,L,dorsal horn,T7,14,,interneuron_pool,PAM50 grey matter,spinal
+T7 L intermediate zone,,L,intermediate zone,T7,14,,interneuron_pool,PAM50 grey matter,spinal
+T7 L ventral horn,,L,ventral horn,T7,14,,interneuron_pool,PAM50 grey matter,spinal
+T7 R dorsal horn,,R,dorsal horn,T7,14,,interneuron_pool,PAM50 grey matter,spinal
+T7 R intermediate zone,,R,intermediate zone,T7,14,,interneuron_pool,PAM50 grey matter,spinal
+T7 R ventral horn,,R,ventral horn,T7,14,,interneuron_pool,PAM50 grey matter,spinal
+T8 L dorsal horn,,L,dorsal horn,T8,15,,interneuron_pool,PAM50 grey matter,spinal
+T8 L intermediate zone,,L,intermediate zone,T8,15,,interneuron_pool,PAM50 grey matter,spinal
+T8 L ventral horn,,L,ventral horn,T8,15,,interneuron_pool,PAM50 grey matter,spinal
+T8 R dorsal horn,,R,dorsal horn,T8,15,,interneuron_pool,PAM50 grey matter,spinal
+T8 R intermediate zone,,R,intermediate zone,T8,15,,interneuron_pool,PAM50 grey matter,spinal
+T8 R ventral horn,,R,ventral horn,T8,15,,interneuron_pool,PAM50 grey matter,spinal
+T9 L dorsal horn,,L,dorsal horn,T9,16,,interneuron_pool,PAM50 grey matter,spinal
+T9 L intermediate zone,,L,intermediate zone,T9,16,,interneuron_pool,PAM50 grey matter,spinal
+T9 L ventral horn,,L,ventral horn,T9,16,,interneuron_pool,PAM50 grey matter,spinal
+T9 R dorsal horn,,R,dorsal horn,T9,16,,interneuron_pool,PAM50 grey matter,spinal
+T9 R intermediate zone,,R,intermediate zone,T9,16,,interneuron_pool,PAM50 grey matter,spinal
+T9 R ventral horn,,R,ventral horn,T9,16,,interneuron_pool,PAM50 grey matter,spinal
+T10 L dorsal horn,,L,dorsal horn,T10,17,,interneuron_pool,PAM50 grey matter,spinal
+T10 L intermediate zone,,L,intermediate zone,T10,17,,interneuron_pool,PAM50 grey matter,spinal
+T10 L ventral horn,,L,ventral horn,T10,17,,interneuron_pool,PAM50 grey matter,spinal
+T10 R dorsal horn,,R,dorsal horn,T10,17,,interneuron_pool,PAM50 grey matter,spinal
+T10 R intermediate zone,,R,intermediate zone,T10,17,,interneuron_pool,PAM50 grey matter,spinal
+T10 R ventral horn,,R,ventral horn,T10,17,,interneuron_pool,PAM50 grey matter,spinal
+T11 L dorsal horn,,L,dorsal horn,T11,18,,interneuron_pool,PAM50 grey matter,spinal
+T11 L intermediate zone,,L,intermediate zone,T11,18,,interneuron_pool,PAM50 grey matter,spinal
+T11 L ventral horn,,L,ventral horn,T11,18,,interneuron_pool,PAM50 grey matter,spinal
+T11 R dorsal horn,,R,dorsal horn,T11,18,,interneuron_pool,PAM50 grey matter,spinal
+T11 R intermediate zone,,R,intermediate zone,T11,18,,interneuron_pool,PAM50 grey matter,spinal
+T11 R ventral horn,,R,ventral horn,T11,18,,interneuron_pool,PAM50 grey matter,spinal
+T12 L dorsal horn,,L,dorsal horn,T12,19,,interneuron_pool,PAM50 grey matter,spinal
+T12 L intermediate zone,,L,intermediate zone,T12,19,,interneuron_pool,PAM50 grey matter,spinal
+T12 L ventral horn,,L,ventral horn,T12,19,,interneuron_pool,PAM50 grey matter,spinal
+T12 R dorsal horn,,R,dorsal horn,T12,19,,interneuron_pool,PAM50 grey matter,spinal
+T12 R intermediate zone,,R,intermediate zone,T12,19,,interneuron_pool,PAM50 grey matter,spinal
+T12 R ventral horn,,R,ventral horn,T12,19,,interneuron_pool,PAM50 grey matter,spinal
+L1 L dorsal horn,,L,dorsal horn,L1,20,,interneuron_pool,PAM50 grey matter,spinal
+L1 L intermediate zone,,L,intermediate zone,L1,20,,interneuron_pool,PAM50 grey matter,spinal
+L1 L ventral horn,,L,ventral horn,L1,20,,interneuron_pool,PAM50 grey matter,spinal
+L1 R dorsal horn,,R,dorsal horn,L1,20,,interneuron_pool,PAM50 grey matter,spinal
+L1 R intermediate zone,,R,intermediate zone,L1,20,,interneuron_pool,PAM50 grey matter,spinal
+L1 R ventral horn,,R,ventral horn,L1,20,,interneuron_pool,PAM50 grey matter,spinal
+L2 L dorsal horn,,L,dorsal horn,L2,21,,interneuron_pool,PAM50 grey matter,spinal
+L2 L intermediate zone,,L,intermediate zone,L2,21,,interneuron_pool,PAM50 grey matter,spinal
+L2 L ventral horn,,L,ventral horn,L2,21,,interneuron_pool,PAM50 grey matter,spinal
+L2 R dorsal horn,,R,dorsal horn,L2,21,,interneuron_pool,PAM50 grey matter,spinal
+L2 R intermediate zone,,R,intermediate zone,L2,21,,interneuron_pool,PAM50 grey matter,spinal
+L2 R ventral horn,,R,ventral horn,L2,21,,interneuron_pool,PAM50 grey matter,spinal
+L3 L dorsal horn,,L,dorsal horn,L3,22,,interneuron_pool,PAM50 grey matter,spinal
+L3 L intermediate zone,,L,intermediate zone,L3,22,,interneuron_pool,PAM50 grey matter,spinal
+L3 L ventral horn,,L,ventral horn,L3,22,,interneuron_pool,PAM50 grey matter,spinal
+L3 R dorsal horn,,R,dorsal horn,L3,22,,interneuron_pool,PAM50 grey matter,spinal
+L3 R intermediate zone,,R,intermediate zone,L3,22,,interneuron_pool,PAM50 grey matter,spinal
+L3 R ventral horn,,R,ventral horn,L3,22,,interneuron_pool,PAM50 grey matter,spinal
+L4 L dorsal horn,,L,dorsal horn,L4,23,,interneuron_pool,PAM50 grey matter,spinal
+L4 L intermediate zone,,L,intermediate zone,L4,23,,interneuron_pool,PAM50 grey matter,spinal
+L4 L ventral horn,,L,ventral horn,L4,23,,interneuron_pool,PAM50 grey matter,spinal
+L4 R dorsal horn,,R,dorsal horn,L4,23,,interneuron_pool,PAM50 grey matter,spinal
+L4 R intermediate zone,,R,intermediate zone,L4,23,,interneuron_pool,PAM50 grey matter,spinal
+L4 R ventral horn,,R,ventral horn,L4,23,,interneuron_pool,PAM50 grey matter,spinal
+L5 L dorsal horn,,L,dorsal horn,L5,24,,interneuron_pool,PAM50 grey matter,spinal
+L5 L intermediate zone,,L,intermediate zone,L5,24,,interneuron_pool,PAM50 grey matter,spinal
+L5 L ventral horn,,L,ventral horn,L5,24,,interneuron_pool,PAM50 grey matter,spinal
+L5 R dorsal horn,,R,dorsal horn,L5,24,,interneuron_pool,PAM50 grey matter,spinal
+L5 R intermediate zone,,R,intermediate zone,L5,24,,interneuron_pool,PAM50 grey matter,spinal
+L5 R ventral horn,,R,ventral horn,L5,24,,interneuron_pool,PAM50 grey matter,spinal
+S1 L dorsal horn,,L,dorsal horn,S1,25,,interneuron_pool,PAM50 grey matter,spinal
+S1 L intermediate zone,,L,intermediate zone,S1,25,,interneuron_pool,PAM50 grey matter,spinal
+S1 L ventral horn,,L,ventral horn,S1,25,,interneuron_pool,PAM50 grey matter,spinal
+S1 R dorsal horn,,R,dorsal horn,S1,25,,interneuron_pool,PAM50 grey matter,spinal
+S1 R intermediate zone,,R,intermediate zone,S1,25,,interneuron_pool,PAM50 grey matter,spinal
+S1 R ventral horn,,R,ventral horn,S1,25,,interneuron_pool,PAM50 grey matter,spinal
+S2 L dorsal horn,,L,dorsal horn,S2,26,,interneuron_pool,PAM50 grey matter,spinal
+S2 L intermediate zone,,L,intermediate zone,S2,26,,interneuron_pool,PAM50 grey matter,spinal
+S2 L ventral horn,,L,ventral horn,S2,26,,interneuron_pool,PAM50 grey matter,spinal
+S2 R dorsal horn,,R,dorsal horn,S2,26,,interneuron_pool,PAM50 grey matter,spinal
+S2 R intermediate zone,,R,intermediate zone,S2,26,,interneuron_pool,PAM50 grey matter,spinal
+S2 R ventral horn,,R,ventral horn,S2,26,,interneuron_pool,PAM50 grey matter,spinal
+S3 L dorsal horn,,L,dorsal horn,S3,27,,interneuron_pool,PAM50 grey matter,spinal
+S3 L intermediate zone,,L,intermediate zone,S3,27,,interneuron_pool,PAM50 grey matter,spinal
+S3 L ventral horn,,L,ventral horn,S3,27,,interneuron_pool,PAM50 grey matter,spinal
+S3 R dorsal horn,,R,dorsal horn,S3,27,,interneuron_pool,PAM50 grey matter,spinal
+S3 R intermediate zone,,R,intermediate zone,S3,27,,interneuron_pool,PAM50 grey matter,spinal
+S3 R ventral horn,,R,ventral horn,S3,27,,interneuron_pool,PAM50 grey matter,spinal
+S4 L dorsal horn,,L,dorsal horn,S4,28,,interneuron_pool,PAM50 grey matter,spinal
+S4 L intermediate zone,,L,intermediate zone,S4,28,,interneuron_pool,PAM50 grey matter,spinal
+S4 L ventral horn,,L,ventral horn,S4,28,,interneuron_pool,PAM50 grey matter,spinal
+S4 R dorsal horn,,R,dorsal horn,S4,28,,interneuron_pool,PAM50 grey matter,spinal
+S4 R intermediate zone,,R,intermediate zone,S4,28,,interneuron_pool,PAM50 grey matter,spinal
+S4 R ventral horn,,R,ventral horn,S4,28,,interneuron_pool,PAM50 grey matter,spinal
+S5 L dorsal horn,,L,dorsal horn,S5,29,,interneuron_pool,PAM50 grey matter,spinal
+S5 L intermediate zone,,L,intermediate zone,S5,29,,interneuron_pool,PAM50 grey matter,spinal
+S5 L ventral horn,,L,ventral horn,S5,29,,interneuron_pool,PAM50 grey matter,spinal
+S5 R dorsal horn,,R,dorsal horn,S5,29,,interneuron_pool,PAM50 grey matter,spinal
+S5 R intermediate zone,,R,intermediate zone,S5,29,,interneuron_pool,PAM50 grey matter,spinal
+S5 R ventral horn,,R,ventral horn,S5,29,,interneuron_pool,PAM50 grey matter,spinal
+C1 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C1,0,,input,,peripheral
+C1 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C1,0,,output,,peripheral
+C1 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C1,0,,input,,peripheral
+C1 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C1,0,,output,,peripheral
+C2 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C2,1,,input,,peripheral
+C2 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C2,1,,output,,peripheral
+C2 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C2,1,,input,,peripheral
+C2 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C2,1,,output,,peripheral
+C3 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C3,2,,input,,peripheral
+C3 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C3,2,,output,,peripheral
+C3 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C3,2,,input,,peripheral
+C3 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C3,2,,output,,peripheral
+C4 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C4,3,,input,,peripheral
+C4 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C4,3,,output,,peripheral
+C4 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C4,3,,input,,peripheral
+C4 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C4,3,,output,,peripheral
+C5 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C5,4,,input,,peripheral
+C5 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C5,4,,output,,peripheral
+C5 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C5,4,,input,,peripheral
+C5 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C5,4,,output,,peripheral
+C6 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C6,5,,input,,peripheral
+C6 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C6,5,,output,,peripheral
+C6 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C6,5,,input,,peripheral
+C6 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C6,5,,output,,peripheral
+C7 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C7,6,,input,,peripheral
+C7 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C7,6,,output,,peripheral
+C7 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C7,6,,input,,peripheral
+C7 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C7,6,,output,,peripheral
+C8 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,C8,7,,input,,peripheral
+C8 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,C8,7,,output,,peripheral
+C8 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,C8,7,,input,,peripheral
+C8 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,C8,7,,output,,peripheral
+T1 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T1,8,,input,,peripheral
+T1 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T1,8,,output,,peripheral
+T1 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T1,8,,output,,peripheral
+T1 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T1,8,,input,,peripheral
+T1 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T1,8,,output,,peripheral
+T1 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T1,8,,output,,peripheral
+T2 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T2,9,,input,,peripheral
+T2 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T2,9,,output,,peripheral
+T2 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T2,9,,output,,peripheral
+T2 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T2,9,,input,,peripheral
+T2 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T2,9,,output,,peripheral
+T2 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T2,9,,output,,peripheral
+T3 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T3,10,,input,,peripheral
+T3 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T3,10,,output,,peripheral
+T3 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T3,10,,output,,peripheral
+T3 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T3,10,,input,,peripheral
+T3 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T3,10,,output,,peripheral
+T3 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T3,10,,output,,peripheral
+T4 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T4,11,,input,,peripheral
+T4 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T4,11,,output,,peripheral
+T4 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T4,11,,output,,peripheral
+T4 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T4,11,,input,,peripheral
+T4 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T4,11,,output,,peripheral
+T4 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T4,11,,output,,peripheral
+T5 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T5,12,,input,,peripheral
+T5 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T5,12,,output,,peripheral
+T5 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T5,12,,output,,peripheral
+T5 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T5,12,,input,,peripheral
+T5 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T5,12,,output,,peripheral
+T5 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T5,12,,output,,peripheral
+T6 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T6,13,,input,,peripheral
+T6 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T6,13,,output,,peripheral
+T6 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T6,13,,output,,peripheral
+T6 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T6,13,,input,,peripheral
+T6 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T6,13,,output,,peripheral
+T6 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T6,13,,output,,peripheral
+T7 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T7,14,,input,,peripheral
+T7 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T7,14,,output,,peripheral
+T7 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T7,14,,output,,peripheral
+T7 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T7,14,,input,,peripheral
+T7 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T7,14,,output,,peripheral
+T7 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T7,14,,output,,peripheral
+T8 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T8,15,,input,,peripheral
+T8 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T8,15,,output,,peripheral
+T8 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T8,15,,output,,peripheral
+T8 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T8,15,,input,,peripheral
+T8 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T8,15,,output,,peripheral
+T8 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T8,15,,output,,peripheral
+T9 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T9,16,,input,,peripheral
+T9 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T9,16,,output,,peripheral
+T9 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T9,16,,output,,peripheral
+T9 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T9,16,,input,,peripheral
+T9 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T9,16,,output,,peripheral
+T9 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T9,16,,output,,peripheral
+T10 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T10,17,,input,,peripheral
+T10 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T10,17,,output,,peripheral
+T10 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T10,17,,output,,peripheral
+T10 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T10,17,,input,,peripheral
+T10 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T10,17,,output,,peripheral
+T10 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T10,17,,output,,peripheral
+T11 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T11,18,,input,,peripheral
+T11 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T11,18,,output,,peripheral
+T11 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T11,18,,output,,peripheral
+T11 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T11,18,,input,,peripheral
+T11 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T11,18,,output,,peripheral
+T11 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T11,18,,output,,peripheral
+T12 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,T12,19,,input,,peripheral
+T12 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,T12,19,,output,,peripheral
+T12 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,T12,19,,output,,peripheral
+T12 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,T12,19,,input,,peripheral
+T12 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,T12,19,,output,,peripheral
+T12 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,T12,19,,output,,peripheral
+L1 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,L1,20,,input,,peripheral
+L1 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,L1,20,,output,,peripheral
+L1 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,L1,20,,output,,peripheral
+L1 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,L1,20,,input,,peripheral
+L1 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,L1,20,,output,,peripheral
+L1 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,L1,20,,output,,peripheral
+L2 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,L2,21,,input,,peripheral
+L2 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,L2,21,,output,,peripheral
+L2 L sympathetic output,sympathetic preganglionic -> paravertebral ganglia,L,intermediolateral column,L2,21,,output,,peripheral
+L2 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,L2,21,,input,,peripheral
+L2 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,L2,21,,output,,peripheral
+L2 R sympathetic output,sympathetic preganglionic -> paravertebral ganglia,R,intermediolateral column,L2,21,,output,,peripheral
+L3 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,L3,22,,input,,peripheral
+L3 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,L3,22,,output,,peripheral
+L3 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,L3,22,,input,,peripheral
+L3 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,L3,22,,output,,peripheral
+L4 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,L4,23,,input,,peripheral
+L4 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,L4,23,,output,,peripheral
+L4 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,L4,23,,input,,peripheral
+L4 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,L4,23,,output,,peripheral
+L5 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,L5,24,,input,,peripheral
+L5 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,L5,24,,output,,peripheral
+L5 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,L5,24,,input,,peripheral
+L5 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,L5,24,,output,,peripheral
+S1 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,S1,25,,input,,peripheral
+S1 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,S1,25,,output,,peripheral
+S1 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,S1,25,,input,,peripheral
+S1 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,S1,25,,output,,peripheral
+S2 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,S2,26,,input,,peripheral
+S2 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,S2,26,,output,,peripheral
+S2 L parasympathetic output,parasympathetic preganglionic -> pelvic viscera,L,sacral parasympathetic nucleus,S2,26,,output,,peripheral
+S2 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,S2,26,,input,,peripheral
+S2 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,S2,26,,output,,peripheral
+S2 R parasympathetic output,parasympathetic preganglionic -> pelvic viscera,R,sacral parasympathetic nucleus,S2,26,,output,,peripheral
+S3 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,S3,27,,input,,peripheral
+S3 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,S3,27,,output,,peripheral
+S3 L parasympathetic output,parasympathetic preganglionic -> pelvic viscera,L,sacral parasympathetic nucleus,S3,27,,output,,peripheral
+S3 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,S3,27,,input,,peripheral
+S3 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,S3,27,,output,,peripheral
+S3 R parasympathetic output,parasympathetic preganglionic -> pelvic viscera,R,sacral parasympathetic nucleus,S3,27,,output,,peripheral
+S4 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,S4,28,,input,,peripheral
+S4 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,S4,28,,output,,peripheral
+S4 L parasympathetic output,parasympathetic preganglionic -> pelvic viscera,L,sacral parasympathetic nucleus,S4,28,,output,,peripheral
+S4 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,S4,28,,input,,peripheral
+S4 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,S4,28,,output,,peripheral
+S4 R parasympathetic output,parasympathetic preganglionic -> pelvic viscera,R,sacral parasympathetic nucleus,S4,28,,output,,peripheral
+S5 L DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",L,dorsal root ganglion,S5,29,,input,,peripheral
+S5 L motor output,alpha/gamma motor neuron axons -> skeletal muscle,L,ventral root,S5,29,,output,,peripheral
+S5 R DRG,"pseudounipolar primary afferent (touch, proprioception, pain, temperature)",R,dorsal root ganglion,S5,29,,input,,peripheral
+S5 R motor output,alpha/gamma motor neuron axons -> skeletal muscle,R,ventral root,S5,29,,output,,peripheral
+CN I olfactory receptor neurons,primary olfactory cortex incl. cortical amygdala,M,cranial nerve,,,,input,,peripheral
+CN II retinal ganglion cells,optic tract -> LGN (partial decussation at chiasm),M,cranial nerve,,,,input,,peripheral
+CN V trigeminal ganglion (face touch/pain),trigeminal nuclei,M,cranial nerve,,,,input,,peripheral
+CN VIII cochlear + vestibular ganglia,cochlear nuclei,M,cranial nerve,,,,input,,peripheral
+CN VII/IX/X taste + visceral afferents,nucleus of the solitary tract,M,cranial nerve,,,,input,,peripheral
+CN III/IV/VI motor neurons (eye muscles),CN III/IV/VI motor neurons (eye muscles),M,cranial nerve,,,,output,,peripheral
+"CN V/VII/IX/X/XI/XII motor neurons (jaw, face, pharynx, larynx, neck, tongue)","CN V/VII/IX/X/XI/XII motor neurons (jaw, face, pharynx, larynx, neck, tongue)",M,cranial nerve,,,,output,,peripheral
+"CN III/VII/IX/X parasympathetic preganglionic (pupil, glands, heart, gut)","CN III/VII/IX/X parasympathetic preganglionic (pupil, glands, heart, gut)",M,cranial nerve,,,,output,,peripheral

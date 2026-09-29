@@ -3,3 +3,5 @@ __pycache__/
 .pytest_cache/
 output/
 *.egg-info/
+data/
+results/connectome/*.trk
